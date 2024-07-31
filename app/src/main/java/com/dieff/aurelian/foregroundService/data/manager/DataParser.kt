@@ -59,14 +59,14 @@ object DataParser {
             return emptyList()
         }
 
-        val packets = parseAurelianPacket(data, device)
+        val packets = parseAurelianSegment(data, device)
 
         return packets.map { packet ->
             packet.copy(captureTime = setCaptureTimePreviewData(packet, device))
         }
     }
 
-    private fun parseAurelianPacket(packetData: ByteArray, device: Device): List<AurelianPacket> {
+    private fun parseAurelianSegment(packetData: ByteArray, device: Device): List<AurelianPacket> {
         val buffer = ByteBuffer.wrap(packetData).order(ByteOrder.LITTLE_ENDIAN)
 
         val basePacket = AurelianPacket(
@@ -338,7 +338,7 @@ object DataParser {
     }
 
     private suspend fun processAurelianDataSegment(singleStorage: ByteArray, device: Device, dateTimeFormatter: DateTimeFormatter) {
-        val historyPacketDataList = parseAurelianPacket(singleStorage, device)
+        val historyPacketDataList = parseAurelianSegment(singleStorage, device)
         historyPacketDataList.forEach { historyPacketData ->
             processHistoryPacketData(historyPacketData, device, dateTimeFormatter)
         }
