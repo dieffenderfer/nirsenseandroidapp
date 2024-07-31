@@ -1,0 +1,720 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TableLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/table"
+    android:layout_width="fill_parent"
+    android:background="@color/colorBackground"
+    android:layout_height="match_parent"
+    android:stretchColumns="0,1,2"
+    android:gravity="top">
+
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="2"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_column="0"
+            android:layout_margin="0.2dp"
+            android:background="@color/nirSense_blue"
+            android:gravity="center"
+            android:padding="5dp"
+            android:text="@string/device_status_bit"
+            android:textColor="#F0F0F0"
+            android:textSize="@dimen/font_size_H"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_column="1"
+            android:layout_margin="0.2dp"
+            android:background="@color/nirSense_blue"
+            android:gravity="center"
+            android:padding="5dp"
+            android:text="@string/status"
+            android:textColor="#F0F0F0"
+            android:textSize="@dimen/font_size_H"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_column="2"
+            android:layout_margin="0.2dp"
+            android:background="@color/nirSense_blue"
+            android:gravity="center"
+            android:padding="5dp"
+            android:text="@string/user_action"
+            android:textColor="#F0F0F0"
+            android:textSize="@dimen/font_size_H"
+            android:textStyle="bold" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_0"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/sensor_stopped"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_1"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/sensor_memory_error"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_2"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/sensor_stopped"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_3"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/n_a"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/none"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_4"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/sensor_memory_error"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_5"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/battery_error"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_6"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/electronics_error"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_7"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/electronics_error"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_8"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/electronics_error"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_9"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/electronics_error"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_10"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/electronics_error"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_11"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/electronics_error"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/restart_instructions"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_12"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/stO2_signal_low"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/none"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_13"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/pr_signal_low"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/none"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_14"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/spo2_signal_low"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/none"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_15"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/rr_signal_low"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/none"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+    <TableRow
+        android:background="@color/colorBorder"
+        android:layout_width="fill_parent"
+        android:layout_weight="1"
+        >
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/_16"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="0"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/high_ambient"
+            android:textSize="@dimen/font_size_F"
+            android:layout_margin="0.2dp"
+            android:layout_column="1"
+            android:gravity="center"
+            />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:background="@color/colorBackgroundSecondary"
+            android:text="@string/reposition_the_sensor"
+            android:textSize="@dimen/font_size_F"
+
+            android:layout_margin="0.2dp"
+            android:gravity="center"
+            android:layout_column="2" />
+    </TableRow>
+
+</TableLayout>

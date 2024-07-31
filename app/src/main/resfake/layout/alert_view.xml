@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/alert_title_label"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:textSize="40sp"
+        app:layout_constraintEnd_toEndOf="@+id/flow"
+        app:layout_constraintStart_toStartOf="@+id/flow"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Alert!" />
+
+    <androidx.constraintlayout.helper.widget.Flow
+        android:id="@+id/flow"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="@dimen/alert_items_margin"
+        android:orientation="horizontal"
+        app:constraint_referenced_ids="name_label, alert_type_label, reading_value_label"
+        app:flow_horizontalGap="@dimen/alerts_horizontal_gap"
+        app:flow_wrapMode="aligned"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/alert_title_label" />
+
+    <TextView
+        android:id="@+id/name_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingStart="@dimen/alert_items_padding"
+        android:paddingEnd="@dimen/alert_items_padding"
+        android:textSize="@dimen/alerts_font_size"
+        tools:ignore="MissingConstraints"
+        tools:text="Casey" />
+
+    <TextView
+        android:id="@+id/alert_type_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="@drawable/background_alert_type_rr"
+        android:paddingStart="@dimen/alert_items_padding"
+        android:paddingEnd="@dimen/alert_items_padding"
+        android:textSize="@dimen/alerts_font_size"
+        android:textStyle="bold"
+        tools:ignore="MissingConstraints"
+        tools:text="SPO2" />
+
+    <TextView
+        android:id="@+id/reading_value_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingStart="@dimen/alert_items_padding"
+        android:paddingEnd="@dimen/alert_items_padding"
+        android:textSize="@dimen/alerts_font_size"
+        android:textStyle="bold"
+        tools:background="@drawable/background_alert_priority_high"
+        tools:ignore="MissingConstraints"
+        tools:text="17%" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/tap_to_view_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/alert_items_margin"
+        android:layout_marginTop="@dimen/alert_items_margin"
+        android:textAllCaps="false"
+        android:textSize="@dimen/alerts_font_size"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/flow"
+        tools:text="Details" />
+
+    <androidx.appcompat.widget.AppCompatButton
+        android:id="@+id/disable_alerts"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/alert_items_margin"
+        android:layout_marginTop="@dimen/alert_items_margin"
+        android:text="@string/disable_alerts"
+        android:textAllCaps="false"
+        android:textSize="@dimen/alerts_font_size"
+        app:layout_constraintEnd_toStartOf="@id/tap_to_view_button"
+        app:layout_constraintTop_toBottomOf="@id/flow" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

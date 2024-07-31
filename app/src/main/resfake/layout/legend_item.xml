@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/background_border"
+    android:foreground="?selectableItemBackground"
+    android:paddingTop="4dp"
+    android:paddingEnd="7dp"
+    android:paddingBottom="4dp"
+    android:paddingStart="7dp">
+
+    <TextView
+        android:id="@+id/sensorTextView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:gravity="center|end"
+        android:textSize="@dimen/font_size_X"
+        app:layout_constraintBottom_toTopOf="@+id/horizontal_limit"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="@+id/guideline3"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="95" />
+
+    <TextView
+        android:id="@+id/patchTypeTextView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:paddingTop="10dp"
+        android:gravity="top|start"
+        android:textSize="@dimen/font_size_J"
+        app:layout_constraintBottom_toTopOf="@+id/horizontal_limit"
+        app:layout_constraintEnd_toStartOf="@+id/guideline3"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="SpO2" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/horizontal_limit"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent="0.68" />
+
+    <TextView
+        android:id="@+id/valueType"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:gravity="end|top"
+        android:textSize="@dimen/font_size_J"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/horizontal_limit"
+        tools:text="SpO2" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.5" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

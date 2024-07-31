@@ -1,0 +1,176 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ScrollView
+        android:id="@+id/fragment_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        tools:visibility="visible">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <LinearLayout
+                android:id="@+id/fragment_patch_settings_container_1"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:layout_marginTop="@dimen/margin_xsmall"
+                    android:gravity="center"
+                    android:text="@string/spO2"
+                    android:textSize="@dimen/font_size_I"
+                    android:textStyle="bold" />
+
+                <include
+                    android:id="@+id/slider_spo2_high"
+                    layout="@layout/view_seekbar_simple" />
+
+                <include
+                    android:id="@+id/slider_spo2_medium"
+                    layout="@layout/view_seekbar_simple" />
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:background="@color/colorSubtle"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/fragment_patch_settings_container_1" />
+
+            <LinearLayout
+                android:id="@+id/fragment_patch_settings_container_2"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/activity_horizontal_margin"
+                android:background="@color/patch_pr_transparent"
+                android:orientation="vertical"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/fragment_patch_settings_container_1">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:text="@string/pulse_rate"
+                    android:textSize="@dimen/font_size_I"
+                    android:textStyle="bold" />
+
+                <include
+                    android:id="@+id/pulse_rate_high_slider"
+                    layout="@layout/view_seekbar" />
+
+                <include
+                    android:id="@+id/pulse_medium_slider"
+                    layout="@layout/view_seekbar" />
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:background="@color/colorSubtle"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/fragment_patch_settings_container_2" />
+
+            <LinearLayout
+                android:id="@+id/fragment_patch_settings_container_3"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/activity_horizontal_margin"
+                android:background="@color/patch_rr_transparent"
+                android:orientation="vertical"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/fragment_patch_settings_container_2">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:gravity="center"
+                    android:text="@string/respiratory_rate"
+                    android:textSize="@dimen/font_size_I"
+                    android:textStyle="bold" />
+
+                <include
+                    android:id="@+id/respiratory_rate_high_slider"
+                    layout="@layout/view_seekbar" />
+
+                <include
+                    android:id="@+id/respiratory_medium_slider"
+                    layout="@layout/view_seekbar" />
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:background="@color/colorSubtle"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/fragment_patch_settings_container_3" />
+
+            <com.amplifilab.sensor.ui.common.component.BigButton
+                android:id="@+id/update_patient_Id"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:buttonIcon="@drawable/ic_baseline_edit_24"
+                app:buttonText="@string/change_patient_id"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@id/fragment_patch_settings_container_3"
+                app:layout_constraintEnd_toStartOf="@id/device_check"
+                />
+
+            <com.amplifilab.sensor.ui.common.component.BigButton
+                android:id="@+id/device_check"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:buttonIcon="@drawable/ic_device_check_24"
+                app:buttonText="Device Check"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@id/update_patient_Id"
+                app:layout_constraintTop_toBottomOf="@id/fragment_patch_settings_container_3"
+                app:layout_constraintEnd_toStartOf="@id/calibration_settings"
+                />
+
+            <com.amplifilab.sensor.ui.common.component.BigButton
+                android:id="@+id/calibration_settings"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                app:buttonIcon="@drawable/ic_tune"
+                app:buttonText="@string/re_calibrate_sensor"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@id/device_check"
+                app:layout_constraintTop_toBottomOf="@id/fragment_patch_settings_container_3"
+                app:layout_constraintEnd_toEndOf="parent"
+                />
+
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </ScrollView>
+
+    <ProgressBar
+        android:id="@+id/progress_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:indeterminate="true"
+        tools:visibility="gone" />
+</FrameLayout>

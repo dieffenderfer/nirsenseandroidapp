@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="BigButton">
+        <attr name="buttonText" format="string" />
+        <attr name="buttonIcon" format="reference" />
+    </declare-styleable>
+
+    <declare-styleable name="LegendView">
+        <attr name="value" format="string" />
+        <attr name="label_text" format="string" />
+        <attr name="value_type" format="string" />
+        <attr name="text_color" format="color" />
+    </declare-styleable>
+
+    <declare-styleable name="LineCharWithCustomLegendComponent">
+        <attr name="legendValueTextSize" format="dimension" />
+        <attr name="legendLabelTextSize" format="dimension" />
+    </declare-styleable>
+
+    <declare-styleable name="ChartView">
+        <attr name="title" format="string" />
+        <attr name="shape" format="enum">
+            <enum name="card" value="0" />
+            <enum name="flat" value="1" />
+        </attr>
+        <attr name="cardElevation" format="dimension" />
+        <attr name="initialStatus" format="enum">
+            <enum name="loading" value="0" />
+            <enum name="ready" value="1" />
+            <enum name="notPaired" value="2" />
+        </attr>
+        <attr name="legendType" format="enum">
+            <enum name="defaultLegend" value="0" />
+            <enum name="noLegend" value="1" />
+        </attr>
+        <attr name="type" format="enum">
+            <enum name="multiSensor" value="0" />
+            <enum name="liveData" value="1" />
+            <enum name="analyzeData" value="2" />
+        </attr>
+    </declare-styleable>
+
+    <declare-styleable name="VerticalTextView">
+        <attr name="android:text" />
+        <attr name="android:textColor" />
+        <attr name="android:textSize" />
+    </declare-styleable>
+</resources>

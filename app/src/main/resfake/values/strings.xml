@@ -1,0 +1,200 @@
+<resources>
+    <string name="app_name">NIRSense</string>
+
+    <!--MESSAGES-->
+    <string name="message_close_app">Click again to exit…</string>
+
+    <!--Menu-->
+    <string name="menu_calibration">Calibration Settings</string>
+    <string name="menu_config">Configuration</string>
+    <string name="menu_scan">Scan Devices</string>
+    <string name="menu_add_patch">Pair New Patch</string>
+    <string name="menu_quit_app">Quit App</string>
+    <string name="menu_export_session">Export Session Data</string>
+    <string name="menu_export_saved_data">Export Saved Data</string>
+
+    <!--DashboardFragment-->
+    <string name="fragment_dashboard__lbl_title">Dashboard</string>
+    <string name="fragment_dashboard__lbl_upperlimit">Upper Limit</string>
+    <string name="fragment_dashboard__lbl_lowlimit">Lower Limit</string>
+    <string name="fragment_dashboard__unpair_message">Do you want to disconnect this sensor? This action disables save mode and sampling.</string>
+    <string name="fragment_dashboard_details__ask_name">Rename the Patch:</string>
+    <string name="fragment_dashboard_set_patient_id">Set Patient Id:</string>
+
+    <!--DashboardDetailsFragment-->
+    <string name="fragment_dashboard_details__battery_level">Battery: %1$s%%</string>
+    <string name="fragment_dashboard_details__signal">Signal: %1$s</string>
+
+    <!--PatchSettingsFragment-->
+    <string name="fragment_patch_settings__title">Patch Settings</string>
+
+    <!--AnalyseGraphFragment-->
+    <string name="menu_patch_settings">Patch Settings</string>
+
+    <!--CalibrationSettingsFragment-->
+    <string name="fragment_calibration_settings__path_id">Patch ID: %1$s</string>
+    <string name="fragment_calibration_settings__path_firmware">Patch Firmware: %1$s</string>
+    <string name="fragment_calibration_settings__path_hardware">Patch Hardware: %1$s</string>
+    <string name="fragment_calibration_app_version">App Version: %1$s</string>
+
+    <!--ConfigFragment-->
+    <string name="fragment_config__lbl_title">Configuration</string>
+    <string name="fragment_config__version">Version: %1$s</string>
+    <string name="fragment_config__senddb">Transfer Session Data</string>
+    <string name="fragment_config__delete_all">Wipe all Data</string>
+
+    <!--view_add_sensor.xml-->
+    <string name="view_add_sensor_tap_to_pair">Tap to Pair</string>
+
+    <!--row_device-->
+    <string name="device_name">Name: %1$s</string>
+    <string name="device_mac">MAC Address: %1$s</string>
+    <string name="device_rssi">RSSI: %1$s</string>
+    <string name="device_distance">Distance(m): %1$s</string>
+
+    <string name="chart_legend_value">%d</string>
+    <string name="edit_sensor">Edit</string>
+    <string name="remove">Remove</string>
+
+    <!--Commom messages-->
+    <string name="label_yes">Yes</string>
+    <string name="label_confirm">Confirm</string>
+    <string name="label_cancel">Cancel</string>
+
+    <!--Ble error messages-->
+    <!-- Ble scan error messages -->
+    <string name="error_bluetooth_not_available">Bluetooth is not available</string>
+    <string name="error_bluetooth_disabled">Enable bluetooth and try again</string>
+    <string name="error_location_permission_missing">On Android 6.0 location permission is required. Please enable it in phone settings</string>
+    <string name="error_location_services_disabled">Location services need to be enabled on Android 6.0</string>
+    <string name="error_scan_failed_already_started">Scan with the same filters is already started</string>
+    <string name="error_scan_failed_application_registration_failed">Failed to register application for bluetooth scan</string>
+    <string name="error_scan_failed_feature_unsupported">Scan with specified parameters is not supported</string>
+    <string name="error_scan_failed_internal_error">Scan failed due to internal error</string>
+    <string name="error_scan_failed_out_of_hardware_resources">Scan cannot start due to limited hardware resources</string>
+    <string name="error_undocumented_scan_throttle">Android 7+ does not allow more scans.</string>
+    <string name="error_undocumented_scan_throttle_retry">Try in %d seconds</string>
+    <string name="error_bluetooth_cannot_start">Unable to start scanning</string>
+    <string name="error_unknown_error">Unknown error</string>
+    <string name="error_no_message">No message found for reason=%d. Consider adding one.</string>
+
+    <!-- Other Strings -->
+    <string name="menu_edit">Edit</string>
+    <string name="pr">PR</string>
+    <string name="rr">RR</string>
+    <string name="stO2">&#x394; O₂</string>
+    <string name="stO2_percent">&#x394; O₂(%)</string>
+    <string name="spO2">&#x394; O₂</string>
+    <string name="spo2_percent">&#x394; O₂(%)</string>
+    <string name="choose_a_sensor">Choose a sensor</string>
+    <string name="add_device_title">Add Sensor</string>
+    <string name="menu_close">Close</string>
+    <string name="menu_cancel">Cancel</string>
+    <string name="percentage">%1$d %%</string>
+    <string name="percentage_trim">%1$s%%</string>
+    <string name="percentage_float_2">%1$.2f %%</string>
+    <string name="percentage_float_0">%1$.0f %%</string>
+    <string name="percentage_negative">-%1$d %%</string>
+    <string name="value_negative">-%1$d</string>
+    <string name="value_from_to">%1$d — %2$d</string>
+    <string name="menu_save">Save</string>
+    <string name="re_calibrate_sensor">Re-calibrate Sensor</string>
+    <string name="clear_flash">Clear Flash</string>
+    <string name="patch_name">Change Patch Name</string>
+    <string name="close_without_saving_question">Close without saving?</string>
+    <string name="label_no">No</string>
+    <string name="tap_to_view">Tap to view</string>
+    <string name="alert_dialog_title">Alert</string>
+    <string name="disable_alerts">Disable Alerts</string>
+    <string name="menu_patch_analyse">Analyze</string>
+    <string name="menu_alert_and_settings">Alert and Settings</string>
+    <string name="trend_data">Trend Data</string>
+    <string name="export_data">Export Data</string>
+    <string name="unpair_sensor">Remove Sensor</string>
+    <string name="connect_new_patch">Add New Patch</string>
+    <string name="not_implemented">Not Implemented</string>
+    <string name="fragment_config__confirm_wipe_data">Are you sure you want to delete all data?</string>
+    <string name="return_to_waveform_data">Return to Waveform Data</string>
+    <string name="light_dark_mode">Light Dark Mode</string>
+    <string name="patch_title">Analysis: %1$s</string>
+    <string name="not_in_use">N/A</string>
+    <string name="no_devices_found">No devices found</string>
+    <string name="pulse_rate">Pulse Rate</string>
+    <string name="respiratory_rate">Respiratory Rate</string>
+    <string name="ok">OK</string>
+    <string name="status_ok">Status OK</string>
+    <string name="new_value">New value</string>
+    <string name="stop">Stop</string>
+    <string name="foreground_notification_content">Service is running in background</string>
+    <string name="tap_to_reopen">Tap to open</string>
+    <string name="fragment_config__clear_session">Clear Session Data</string>
+    <string name="fragment_config__confirm_clear_session_data">Clear session data?</string>
+    <string name="bpm">BPM</string>
+    <string name="night">Night</string>
+    <string name="day">Day</string>
+    <string name="live_data">Live Data</string>
+    <string name="historical_data">Historical Data</string>
+    <string name="nirsense_logo">NirSense Logo</string>
+    <string name="patient_id">Patient ID:</string>
+    <string name="patient_id_display">Patient ID: %1$s; Patch: %2$s</string>
+    <string name="mark_event">Mark Event</string>
+    <string name="change_patient_id">Update Patient ID</string>
+    <string name="max_patches">Cannot add a new patch, the maximum number of patches are connected</string>
+    <string name="sensor_hw_version">Sensor HW: %1$s</string>
+    <string name="sensor_sw_version">Sensor SW: %1$s</string>
+    <string name="app_sw_version">App: %1$s</string>
+
+    <array name="initial_slider_values">
+        <item>20.0</item>
+        <item>70.0</item>
+    </array>
+
+<!--    Numbers -->
+    <string name="_0">0</string>
+    <string name="_1">1</string>
+    <string name="_2">2</string>
+    <string name="_3">3</string>
+    <string name="_4">4</string>
+    <string name="_5">5</string>
+    <string name="_6">6</string>
+    <string name="_7">7</string>
+    <string name="_8">8</string>
+    <string name="_9">9</string>
+    <string name="_10">10</string>
+    <string name="_11">11</string>
+    <string name="_12">12</string>
+    <string name="_13">13</string>
+    <string name="_14">14</string>
+    <string name="_15">15</string>
+    <string name="_16">16</string>
+
+<!--    Error Status User Actions -->
+    <string name="restart_instructions">Restart the sensor; if problem persists, replace the sensor</string>
+    <string name="reposition_the_sensor">Reposition the sensor</string>
+    <string name="none">None</string>
+
+<!--    Error Statuses -->
+    <string name="electronics_error">Electronics Error</string>
+    <string name="device_status_bit">Device Status \n Bit</string>
+    <string name="status">Status</string>
+    <string name="user_action">User Action</string>
+    <string name="sensor_stopped">Sensor Stopped</string>
+    <string name="sensor_memory_error">Sensor Memory Error</string>
+    <string name="battery_error">Battery Error</string>
+    <string name="stO2_signal_low">StO2 Signal Low</string>
+    <string name="pr_signal_low">PR Signal Low</string>
+    <string name="spo2_signal_low">SpO2 Signal Low</string>
+    <string name="rr_signal_low">RR Signal Low</string>
+    <string name="high_ambient">High Ambient</string>
+    <string name="n_a">N/A</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="connected">Connected</string>
+    <string name="connection_dot">connection dot</string>
+    <string name="live">Live</string>
+    <string name="battery_image">battery image</string>
+    <string name="ppg">PPG</string>
+    <string name="exporting_data">Exporting data to csv</string>
+    <string name="export_succeeded">Your file: %1$s was created in Documents/Nirsense</string>
+    <string name="export_failed_unknown">Your export failed, possibly due to a file existing with that filename.</string>
+    <string name="export_failed">Your export failed: %1$s</string>
+</resources>

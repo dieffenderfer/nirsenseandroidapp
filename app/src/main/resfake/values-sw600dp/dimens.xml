@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="dashboard_legend_value_font_size">30sp</dimen>
+    <dimen name="dashboard_legend_label_font_size">12sp</dimen>
+    <dimen name="dashboard_chart_axis_tick_text_size">15sp</dimen>
+    <dimen name="legend_label_margin_bottom">4dp</dimen>
+    <dimen name="legend_label_margin_start">8dp</dimen>
+    <integer name="x_axis_label_count">5</integer>
+
+    <dimen name="alert_items_margin">12dp</dimen>
+    <dimen name="alert_items_padding">12dp</dimen>
+    <dimen name="alerts_font_size">20sp</dimen>
+    <dimen name="alerts_horizontal_gap">20dp</dimen>
+</resources>

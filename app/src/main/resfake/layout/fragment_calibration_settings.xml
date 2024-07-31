@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/calibration_content"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            tools:visibility="visible">
+
+            <LinearLayout
+                android:id="@+id/fragment_calibration_settings__container_patch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_margin="@dimen/activity_horizontal_margin"
+                android:orientation="vertical"
+                app:layout_constraintLeft_toLeftOf="parent"
+                app:layout_constraintTop_toTopOf="parent">
+
+                <TextView
+                    android:id="@+id/fragment_calibration_settings__textview_patchid"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Patch ID: XXXX"
+                    tools:text="@string/fragment_calibration_settings__path_id" />
+
+                <TextView
+                    android:id="@+id/fragment_calibration_settings__textview_patchfirmware"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:text="@string/fragment_calibration_settings__path_firmware" />
+
+                <TextView
+                    android:id="@+id/fragment_calibration_settings__textview_appversion"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    tools:text="@string/fragment_calibration_app_version" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="@dimen/activity_horizontal_margin"
+                android:orientation="vertical"
+                app:layout_constraintTop_toBottomOf="@+id/fragment_calibration_settings__container_patch">
+
+                <include
+                    android:id="@+id/fragment_calibration_settings__seekbar_660"
+                    layout="@layout/view_seekbar_no_fine_controls" />
+
+                <include
+                    android:id="@+id/fragment_calibration_settings__seekbar_735"
+                    layout="@layout/view_seekbar_no_fine_controls" />
+
+                <include
+                    android:id="@+id/fragment_calibration_settings__seekbar_810"
+                    layout="@layout/view_seekbar_no_fine_controls" />
+
+                <include
+                    android:id="@+id/fragment_calibration_settings__seekbar_850"
+                    layout="@layout/view_seekbar_no_fine_controls" />
+
+                <include
+                    android:id="@+id/fragment_calibration_settings__seekbar_890"
+                    layout="@layout/view_seekbar_no_fine_controls" />
+
+            </LinearLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </ScrollView>
+
+    <FrameLayout
+        android:id="@+id/loading_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        tools:visibility="gone">
+
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center" />
+    </FrameLayout>
+</FrameLayout>

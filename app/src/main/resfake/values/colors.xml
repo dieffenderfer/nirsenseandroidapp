@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#282828</color>
+    <color name="colorPrimaryDark">#0A0A0A</color>
+    <color name="colorAccent">#C6C6C6</color>
+
+    <!-- Gui Primary Colors -->
+    <color name="textColorPrimary">#131313</color>
+    <color name="colorBackground">#FAFAFA</color>
+    <color name="colorBackgroundSecondary">#F5F5F5</color>
+    <color name="colorSubtle">#cfcfcf</color>
+    <color name="colorBorder">#595959</color>
+
+    <color name="purple">#5d63bb</color>
+    <color name="green">#007ca9</color>
+    <color name="red">#d0312d</color>
+
+    <!-- Patch colors -->
+    <color name="mark_event_line">#9B9B9B</color>
+
+    <color name="patch_sto2">#3C78D7</color>
+    <color name="patch_spo2">#B35F06</color>
+    <color name="patch_rr">#351C75</color>
+    <color name="patch_pr">#6AA74F</color>
+    <color name="patch_waveform">#ED2939</color>
+
+    <color name="ok">#6AA74F</color>
+    <color name="error">#E25336</color>
+    <color name="warning">#EDBE5E</color>
+
+    <color name="patch_sto2_transparent">#553C78D7</color>
+    <color name="patch_spo2_transparent">#55B35F06</color>
+    <color name="patch_rr_transparent">#55351C75</color>
+    <color name="patch_pr_transparent">#556AA74F</color>
+
+    <color name="alert_priority_high">#55FF0000</color>
+    <color name="alert_priority_medium">#55FFFF00</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+
+    <!--Others-->
+    <color name="white">#ffffff</color>
+    <color name="lgrey">#cfcfcf</color>
+    <color name="slgrey">#efefef</color>
+    <color name="gray_font">#5c5c5c</color>
+    <color name="nirSense_blue">#FF0E7DAA</color>
+</resources>

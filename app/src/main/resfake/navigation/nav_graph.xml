@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/dashboardFragment">
+
+    <fragment
+        android:id="@+id/dashboardFragment"
+        android:name="com.amplifilab.sensor.ui.multisensor.MultiSensorFragment"
+        tools:layout="@layout/fragment_dashboard" >
+        <action
+            android:id="@+id/connect_patch_action"
+            app:destination="@id/addSensorFragment" />
+        <action
+            android:id="@+id/patch_waveform_action"
+            app:destination="@id/patchWaveformFragment" />
+        <action
+            android:id="@+id/configuration_action"
+            app:destination="@id/configFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/patchWaveformFragment"
+        android:name="com.amplifilab.sensor.ui.patch.waveform.PatchWaveformViewFragment"
+        tools:layout="@layout/fragment_waveform_data" >
+        <action
+            android:id="@+id/trend_view_action"
+            app:destination="@id/patchTrendViewFragment" />
+        <action
+            android:id="@+id/patch_settings_action"
+            app:destination="@id/patchSettingsFragment" />
+        <action
+            android:id="@+id/connect_patch_action"
+            app:destination="@id/addSensorFragment"
+            app:popUpTo="@id/patchWaveformFragment"
+            app:popUpToInclusive="true" />
+        <action
+            android:id="@+id/data_export_action"
+            app:destination="@id/dataExportViewFragment"
+            app:popUpTo="@id/patchWaveformFragment"
+            app:popUpToInclusive="false" /> />
+    </fragment>
+
+    <fragment
+        android:id="@+id/configFragment"
+        android:name="com.amplifilab.sensor.ui.config.ConfigFragment"
+        tools:layout="@layout/fragment_config"/>
+
+    <fragment
+        android:id="@+id/addSensorFragment"
+        android:name="com.amplifilab.sensor.ui.scan.AddSensorFragment"
+        tools:layout="@layout/fragment_scan_devices" >
+        <action
+            android:id="@+id/patch_waveform_action"
+            app:destination="@id/patchWaveformFragment"
+            app:popUpTo="@id/addSensorFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/patchSettingsFragment"
+        android:name="com.amplifilab.sensor.ui.patch.settings.PatchSettingsFragment"
+        android:label="PatchSettingsFragment" >
+        <action
+            android:id="@+id/patch_waveform_action"
+            app:destination="@id/patchWaveformFragment" />
+        <action
+            android:id="@+id/calibration_settings_action"
+            app:destination="@id/calibrationSettingsFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/calibrationSettingsFragment"
+        android:name="com.amplifilab.sensor.ui.patch.calibration.CalibrationSettingsFragment"
+        android:label="CalibrationSettingsFragment" >
+        <action
+            android:id="@+id/patch_settings_action"
+            app:destination="@id/patchSettingsFragment" />
+    </fragment>
+    <fragment
+        android:id="@+id/patchTrendViewFragment"
+        android:name="com.amplifilab.sensor.ui.patch.trend.PatchTrendViewFragment"
+        android:label="PatchAnalyseFragment" >
+        <action
+            android:id="@+id/patch_waveform_action"
+            app:destination="@id/patchWaveformFragment" />
+
+        <action
+            android:id="@+id/data_export_action"
+            app:destination="@id/dataExportViewFragment"
+            app:popUpTo="@id/patchTrendViewFragment"
+            app:popUpToInclusive="false" /> />
+    </fragment>
+
+    <fragment
+        android:id="@+id/errorStatusFragment"
+        android:name="com.amplifilab.sensor.ui.patch.errorStatus.StatusErrorFragment"
+        android:label="StatusErrorFragment"/>
+
+    <fragment
+        android:id="@+id/dataExportViewFragment"
+        android:name="com.amplifilab.sensor.ui.patch.export.DataExportFragment"
+        android:label="DataExportFragment" >
+    </fragment>
+</navigation>

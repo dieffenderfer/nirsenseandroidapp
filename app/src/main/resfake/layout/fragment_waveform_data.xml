@@ -1,0 +1,165 @@
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:ignore="MissingConstraints">
+
+    <androidx.constraintlayout.helper.widget.Flow
+        android:id="@+id/flow_top_buttons"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:constraint_referenced_ids="day_night_switch_fragment, analyze_btn, export_data_btn, mark_event_btn, alert_and_settings_btn, pair_btn, unpair_btn, quit_app_btn, sample_btn"
+        app:flow_maxElementsWrap="7"
+        app:flow_wrapMode="chain"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="NotSibling,UnknownId" />
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/day_night_switch_fragment"
+        android:name="com.amplifilab.sensor.ui.DayNightSwitch.DayNightSwitchFragment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+    <com.amplifilab.sensor.ui.common.component.BigButton
+        android:id="@+id/analyze_btn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:buttonIcon="@drawable/ic_sine_wave"
+        app:buttonText="@string/trend_data" />
+
+    <com.amplifilab.sensor.ui.common.component.BigButton
+        android:id="@+id/export_data_btn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:buttonIcon="@drawable/ic_baseline_share_24"
+        app:buttonText="@string/export_data" />
+
+    <com.amplifilab.sensor.ui.common.component.BigButton
+        android:id="@+id/mark_event_btn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:buttonIcon="@drawable/ic_mark_event"
+        app:buttonText="@string/mark_event" />
+
+    <com.amplifilab.sensor.ui.common.component.BigButton
+        android:id="@+id/alert_and_settings_btn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:buttonIcon="@drawable/ic_icon_config"
+        app:buttonText="@string/menu_alert_and_settings" />
+
+    <com.amplifilab.sensor.ui.common.component.BigButton
+        android:id="@+id/pair_btn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:buttonIcon="@drawable/ic_add_circle_outline"
+        app:buttonText="@string/connect_new_patch" />
+
+    <com.amplifilab.sensor.ui.common.component.BigButton
+        android:id="@+id/unpair_btn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:buttonIcon="@drawable/ic_baseline_delete_24"
+        app:buttonText="@string/unpair_sensor" />
+
+    <View
+        android:id="@+id/separator"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:background="@color/colorSubtle"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/flow_top_buttons" />
+
+    <com.amplifilab.sensor.ui.common.component.linechart.ChartView
+        android:id="@+id/fragment_dashboard__chart_1"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_marginBottom="@dimen/margin_small"
+        android:backgroundTint="@color/transparent"
+        android:visibility="visible"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/separator"
+        app:shape="flat"
+        app:type="liveData"
+        tools:layout_editor_absoluteX="12dp"
+        tools:visibility="visible">
+
+        <com.amplifilab.sensor.ui.common.component.BigButton
+            android:id="@+id/clear_flash_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="16dp"
+            android:layout_marginTop="1dp"
+            android:alpha="0.7"
+            app:buttonIcon="@drawable/ic_baseline_delete_24"
+            app:buttonText="@string/clear_flash"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.amplifilab.sensor.ui.common.component.BigButton
+            android:id="@+id/toggle_zoom_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="18dp"
+            android:layout_marginTop="1dp"
+            android:alpha="0.7"
+            app:buttonIcon="@drawable/ic_sine_wave"
+            app:buttonText="Zoomout StO2"
+            app:layout_constraintStart_toEndOf="@+id/clear_flash_btn"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.amplifilab.sensor.ui.common.component.BigButton
+            android:id="@+id/quit_app_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="18dp"
+            android:layout_marginTop="1dp"
+            android:alpha="0.7"
+            app:buttonIcon="@drawable/ic_baseline_delete_24"
+            app:buttonText="Quit App"
+            app:layout_constraintStart_toEndOf="@+id/toggle_zoom_btn"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <com.amplifilab.sensor.ui.common.component.BigButton
+            android:id="@+id/sample_btn"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="18dp"
+            android:layout_marginTop="1dp"
+            android:alpha="0.7"
+            app:buttonIcon="@drawable/ic_sine_wave_semitransparent"
+            app:buttonText="Start Sampling"
+            app:layout_constraintStart_toEndOf="@+id/quit_app_btn"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/filename_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Filename:"
+            android:alpha="0.7"
+            app:layout_constraintBottom_toBottomOf="@+id/filename_input_field"
+            app:layout_constraintEnd_toStartOf="@+id/filename_input_field"
+            app:layout_constraintTop_toTopOf="@+id/filename_input_field" />
+
+        <EditText
+            android:id="@+id/filename_input_field"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="18dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginEnd="450px"
+            android:alpha="0.7"
+            android:hint="                          "
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </com.amplifilab.sensor.ui.common.component.linechart.ChartView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

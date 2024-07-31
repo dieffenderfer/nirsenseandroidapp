@@ -1,0 +1,40 @@
+<resources>
+    <style name="DefaultTextView">
+        <item name="android:textSize">@dimen/font_size_I</item>
+        <item name="android:textColor">@color/textColorPrimary</item>
+    </style>
+
+    <style name="DefaultTextView.Small">
+        <item name="android:textSize">@dimen/font_size_G</item>
+    </style>
+
+    <style name="DefaultButtonView" parent="Widget.MaterialComponents.Button">
+        <item name="android:textColor">@color/textColorPrimary</item>
+    </style>
+
+    <style name="DefaultButtonView.Borderless">
+        <item name="backgroundColor">@color/transparent</item>
+    </style>
+
+    <style name="DateTimeAccountView">
+        <item name="android:textSize">@dimen/font_size_Ea</item>
+        <item name="android:textColor">@color/lgrey</item>
+    </style>
+
+    <style name="ActionBar" parent="ThemeOverlay.MaterialComponents.Dark">
+        <item name="android:background">@color/colorPrimary</item>
+        <item name="android:textColor">@color/colorAccent</item>
+    </style>
+
+    <style name="SettingItem" parent="TextAppearance.AppCompat.Widget.DropDownItem">
+        <item name="android:textColor">@color/textColorPrimary</item>
+    </style>
+
+    <style name="PositiveButtonStyle" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/textColorPrimary</item>
+    </style>
+
+    <style name="NegativeButtonStyle" parent="Widget.MaterialComponents.Button.TextButton.Dialog">
+        <item name="android:textColor">@color/textColorPrimary</item>
+    </style>
+</resources>

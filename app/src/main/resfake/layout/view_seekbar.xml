@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center"
+    android:orientation="horizontal"
+    android:padding="@dimen/activity_horizontal_margin"
+    android:weightSum="3.2"
+    app:layout_constraintLeft_toLeftOf="parent">
+
+    <TextView
+        android:id="@+id/view_seekbar__textview_setting"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_weight="0.5"
+        android:gravity="center"
+        android:textSize="@dimen/font_size_G"
+        tools:text="770nm near" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:layout_weight="0.1">
+
+        <ImageButton
+            android:id="@+id/view_seekbar__min_minus_button"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:src="@drawable/ic_remove"
+            android:background="@color/transparent"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"/>
+
+        <ImageButton
+            android:id="@+id/view_seekbar__min_plus_button"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:src="@drawable/ic_add"
+            android:background="@color/transparent"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toEndOf="@id/view_seekbar__min_minus_button"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <com.google.android.material.slider.RangeSlider
+        android:id="@+id/range_slider"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:stepSize="1.0"
+        android:valueFrom="0"
+        android:valueTo="100"
+        app:tickVisible="false"
+        app:thumbColor="@color/textColorPrimary"
+        app:trackColorActive="@color/textColorPrimary"
+        app:trackColorInactive="@color/colorSubtle"
+        app:values="@array/initial_slider_values" />
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="6dp"
+        android:layout_weight="0.1">
+
+        <ImageButton
+            android:id="@+id/view_seekbar__max_minus_button"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:src="@drawable/ic_remove"
+            android:background="@color/transparent"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"/>
+
+        <ImageButton
+            android:id="@+id/view_seekbar__max_plus_button"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:src="@drawable/ic_add"
+            android:background="@color/transparent"
+            app:layout_constraintDimensionRatio="1:1"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toEndOf="@id/view_seekbar__max_minus_button"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <TextView
+        android:id="@+id/view_seekbar__textview_value"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:layout_weight="0.5"
+        android:gravity="center"
+        android:textSize="@dimen/font_size_G"
+        tools:text="0%" />
+</LinearLayout>

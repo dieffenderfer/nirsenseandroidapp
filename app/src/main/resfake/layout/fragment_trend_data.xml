@@ -1,0 +1,86 @@
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:ignore="MissingConstraints">
+
+    <androidx.constraintlayout.helper.widget.Flow
+        android:id="@+id/flow_top_buttons"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:constraint_referenced_ids="day_night_switch_fragment, waveform_data_btn, export_data_btn, alert_and_settings_btn"
+        app:flow_maxElementsWrap="5"
+        app:flow_wrapMode="chain"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.fragment.app.FragmentContainerView
+        android:id="@+id/day_night_switch_fragment"
+        android:name="com.amplifilab.sensor.ui.DayNightSwitch.DayNightSwitchFragment"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content" />
+
+
+    <com.amplifilab.sensor.ui.common.component.BigButton
+        android:id="@+id/waveform_data_btn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:buttonIcon="@drawable/ic_baseline_bluetooth_audio_24"
+        app:buttonText="@string/return_to_waveform_data" />
+
+    <com.amplifilab.sensor.ui.common.component.BigButton
+        android:id="@+id/export_data_btn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:buttonIcon="@drawable/ic_baseline_share_24"
+        app:buttonText="@string/export_data" />
+
+    <com.amplifilab.sensor.ui.common.component.BigButton
+        android:id="@+id/alert_and_settings_btn"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        app:buttonIcon="@drawable/ic_icon_config"
+        app:buttonText="@string/menu_alert_and_settings" />
+
+    <View
+        android:id="@+id/separator"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:background="@color/lgrey"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/flow_top_buttons" />
+
+    <com.amplifilab.sensor.ui.common.component.linechart.ChartView
+        android:id="@+id/line_chart_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginStart="@dimen/margin_xsmall"
+        android:layout_marginEnd="@dimen/margin_xsmall"
+        android:layout_marginBottom="@dimen/margin_xsmall"
+        app:type="analyzeData"
+        app:shape="flat"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/separator"
+        tools:visibility="visible" />
+
+    <ProgressBar
+        android:id="@+id/progress_view"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:indeterminate="true"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/separator"
+        tools:visibility="visible" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/background_border"
+    android:padding="@dimen/borderSize"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <androidx.constraintlayout.helper.widget.Flow
+        android:id="@+id/verticalFlow"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        app:constraint_referenced_ids="stO2_legend, SpO2_legend, pulse_rate_legend, respiratory_rate_legend"
+        app:flow_maxElementsWrap="4"
+        app:flow_wrapMode="chain"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <com.amplifilab.sensor.ui.common.component.LegendView
+        android:id="@+id/stO2_legend"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:value_type="%"
+        app:label_text="StO2"
+        app:layout_constraintBottom_toTopOf="@id/SpO2_legend"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="parent"
+        app:text_color="@color/patch_sto2" />
+
+    <com.amplifilab.sensor.ui.common.component.LegendView
+        android:id="@+id/SpO2_legend"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:value_type="%"
+        app:label_text="SpO2"
+        app:layout_constraintBottom_toTopOf="@id/pulse_rate_legend"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/stO2_legend"
+        app:text_color="@color/patch_spo2" />
+
+    <com.amplifilab.sensor.ui.common.component.LegendView
+        android:id="@+id/pulse_rate_legend"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:value_type="bpm"
+        app:label_text="PR"
+        app:layout_constraintBottom_toTopOf="@id/respiratory_rate_legend"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/SpO2_legend"
+        app:text_color="@color/patch_pr" />
+
+
+    <com.amplifilab.sensor.ui.common.component.LegendView
+        android:id="@+id/respiratory_rate_legend"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:label_text="RR"
+        app:value_type="rpm"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/pulse_rate_legend"
+        app:text_color="@color/patch_rr" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

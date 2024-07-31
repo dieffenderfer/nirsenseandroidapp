@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_marginTop="2dp"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:parentTag="androidx.constraintlayout.widget.ConstraintLayout">
+
+    <ImageView
+        android:id="@+id/data_type_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:layout_marginTop="2dp"
+        android:contentDescription="@string/battery_image"
+        android:src="@drawable/ic_history_24"
+        app:flow_verticalAlign="bottom"
+        app:layout_constraintBottom_toTopOf="@id/chartLimitHorizontal"
+        app:layout_constraintEnd_toStartOf="@id/data_type_text"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/data_type_text"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:textSize="@dimen/font_size_G"
+        app:layout_constraintBottom_toTopOf="@id/chartLimitHorizontal"
+        app:layout_constraintStart_toEndOf="@id/data_type_icon"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Historical Data" />
+
+    <TextView
+        android:id="@+id/patient_id"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:paddingTop="3dp"
+        android:paddingBottom="2dp"
+        android:textSize="@dimen/font_size_G"
+        app:layout_constraintBottom_toTopOf="@id/chartLimitHorizontal"
+        app:layout_constraintEnd_toStartOf="@+id/battery_image"
+        app:layout_constraintStart_toEndOf="@id/data_type_text"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="Patient Id: 1234ABCD" />
+
+    <ImageView
+        android:id="@+id/battery_image"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:contentDescription="@string/battery_image"
+        android:src="@drawable/ic_battery_24"
+        app:layout_constraintBottom_toTopOf="@id/chartLimitHorizontal"
+        app:layout_constraintEnd_toStartOf="@id/battery_level"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/battery_level"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:textSize="@dimen/font_size_G"
+        app:layout_constraintBottom_toTopOf="@id/chartLimitHorizontal"
+        app:layout_constraintEnd_toStartOf="@+id/chartLimitVertical"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="100%" />
+
+    <ImageView
+        android:id="@+id/status_indicator_icon"
+        android:layout_width="wrap_content"
+        android:layout_height="0dp"
+        android:contentDescription="@string/connection_dot"
+        android:src="@drawable/ic_check_box"
+        app:layout_constraintBottom_toTopOf="@id/chartLimitHorizontal"
+        app:layout_constraintEnd_toStartOf="@id/status_indicator_text"
+        app:layout_constraintStart_toEndOf="@id/chartLimitVertical"
+        app:layout_constraintTop_toTopOf="parent"
+        app:tint="@color/ok" />
+
+    <TextView
+        android:id="@+id/status_indicator_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Status: Ok"
+        android:textSize="@dimen/font_size_G"
+        app:layout_constraintBottom_toTopOf="@id/chartLimitHorizontal"
+        app:layout_constraintStart_toEndOf="@id/status_indicator_icon"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/chartLimitHorizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_begin="18dp" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/chartLimitVertical"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        app:layout_constraintGuide_percent="0.82" />
+
+    <com.amplifilab.sensor.ui.common.component.VerticalTextView
+        android:id="@+id/leftAxisLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/spo2_percent"
+        android:textColor="@color/textColorPrimary"
+        android:textSize="@dimen/font_size_G"
+        app:layout_constraintBottom_toBottomOf="@id/lineChartComponent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/lineChartComponent"
+        app:layout_constraintTop_toTopOf="@id/lineChartComponent" />
+
+    <com.amplifilab.sensor.ui.common.component.linechart.LineChartComponent
+        android:id="@+id/lineChartComponent"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toTopOf="@id/ppg_chart"
+        app:layout_constraintEnd_toStartOf="@id/chartLimitVertical"
+        app:layout_constraintStart_toEndOf="@id/leftAxisLabel"
+        app:layout_constraintTop_toBottomOf="@id/chartLimitHorizontal" />
+
+    <com.amplifilab.sensor.ui.common.component.VerticalTextView
+        android:id="@+id/ppg_leftAxisLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/ppg"
+        android:textColor="@color/textColorPrimary"
+        android:visibility="gone"
+        android:textSize="@dimen/font_size_G"
+        app:layout_constraintBottom_toBottomOf="@id/ppg_chart"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/ppg_chart"
+        app:layout_constraintTop_toTopOf="@id/ppg_chart" />
+
+    <com.amplifilab.sensor.ui.common.component.linechart.LineChartComponent
+        android:id="@+id/ppg_chart"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/chartLimitVertical"
+        app:layout_constraintStart_toEndOf="@id/leftAxisLabel"
+        app:layout_constraintTop_toBottomOf="@id/lineChartComponent" />
+
+    <include
+        android:id="@+id/digital_readout"
+        layout="@layout/digital_readout"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/chartLimitVertical"
+        app:layout_constraintTop_toBottomOf="@id/chartLimitHorizontal"
+        />
+
+    <FrameLayout
+        android:id="@+id/tap_to_pair_container"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:foreground="?android:attr/selectableItemBackground"
+        android:background="@color/colorBackgroundSecondary"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            style="@style/DefaultTextView"
+            android:layout_width="wrap_content"
+            android:background="@color/colorBackgroundSecondary"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="@string/view_add_sensor_tap_to_pair"
+            android:textStyle="bold"
+            app:drawableTopCompat="@drawable/ic_add_circle_outline" />
+    </FrameLayout>
+
+    <!-- region Loading View -->
+    <FrameLayout
+        android:id="@+id/loading_view"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:visibility="gone">
+
+        <ProgressBar
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:indeterminate="true" />
+    </FrameLayout>
+    <!-- endregion -->
+
+</androidx.constraintlayout.widget.ConstraintLayout>
