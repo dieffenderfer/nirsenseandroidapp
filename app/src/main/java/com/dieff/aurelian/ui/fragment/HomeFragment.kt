@@ -350,14 +350,14 @@ class HomeFragment : Fragment(), DeviceChangeListener {
             AppID.ANY_DEVICE_APP -> logoImageView.setImageResource(R.drawable.nirsense_logo)
         }
 
-        val requestOptions = RequestOptions().transform(AlphaTransformation(0.1f))
-
-        Glide.with(this)
-            .asGif()
-            .load(R.drawable.animation)
-            .apply(requestOptions)
-            .transition(DrawableTransitionOptions.withCrossFade())
-            .into(logoImageView)
+//        val requestOptions = RequestOptions().transform(AlphaTransformation(0.1f))
+//
+//        Glide.with(this)
+//            .asGif()
+//            .load(R.drawable.animation)
+//            .apply(requestOptions)
+//            .transition(DrawableTransitionOptions.withCrossFade())
+//            .into(logoImageView)
     }
 
     private fun handleDeviceStatusChange(status: BleManager.SetupState) {
