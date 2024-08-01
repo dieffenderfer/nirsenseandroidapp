@@ -2,12 +2,23 @@ package com.dieff.aurelian.foregroundService.ble
 
 import java.time.Instant
 
+/**
+ * Base class representing a data packet from a NIRSense device.
+ * This abstract class defines the common properties for all types of packets.
+ *
+ * @property deviceMacAddress The MAC address of the device sending the packet, represented as a Long.
+ * @property captureTime The timestamp when the packet was captured.
+ * @property sessionId A unique identifier for the current data collection session.
+ */
 open class Packet(
     open val deviceMacAddress: Long,
     open var captureTime: Instant,
     open val sessionId: UByte,
 )
 
+/**
+ * Represents a data packet from an Argus device.
+ */
 data class ArgusPacket(
     override val deviceMacAddress: Long,
     override var captureTime: Instant,
@@ -56,6 +67,9 @@ data class ArgusPacket(
     val reserved32: UInt
 ) : Packet(deviceMacAddress, captureTime, sessionId)
 
+/**
+ * Represents a data packet from an Aurelian EEG device.
+ */
 data class AurelianPacket(
     override val deviceMacAddress: Long,
     override var captureTime: Instant,

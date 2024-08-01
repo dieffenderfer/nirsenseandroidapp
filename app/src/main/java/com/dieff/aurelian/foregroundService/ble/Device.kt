@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothGatt
 import android.util.Log
 import com.dieff.aurelian.AppConfig.appVersion
-import com.dieff.aurelian.globalAppContext
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,108 +13,92 @@ import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.io.FileWriter
 import java.io.IOException
-import java.text.SimpleDateFormat
 import java.time.Instant
-import java.util.TimeZone
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 import kotlin.math.min
 
+/**
+ * Represents a connected Bluetooth device and manages its data and state.
+ *
+ * @property bluetoothGatt The BluetoothGatt instance for this device
+ * @property filename The base filename for CSV data export
+ * @property initialStatus The initial setup state of the device
+ */
 @SuppressLint("MissingPermission")
 class Device(
     var bluetoothGatt: BluetoothGatt,
     var filename: String,
     initialStatus: BleManager.SetupState
 ) {
+    // Device identification properties
     val macAddressString: String = bluetoothGatt.device.address
     val macAddress: Long = macAddressToLong(macAddressString)
-    val name: String = bluetoothGatt.device.name
+    val name: String = bluetoothGatt.device.name ?: "Unknown Device"
 
+    // Device version and family information
     var deviceVersionInfo: DeviceVersionInfo = DeviceVersionInfo("-1", 0, DeviceFamily.Unknown, 0)
 
+    // Device state flags
     var deviceBusy = true
     var streamReady = false
+    var hasCompletedSetupBefore: Boolean = false
 
+    // Live data variables
     var index: Int = 1
     var captureTimePreview: Instant? = null
     var timerBitsPreview: UInt = 0u
 
+    // Stored data variables
     var historyIndex: Int = 1
     var isStreamingStoredData: Boolean = false
     var historyFilename: String = "NIRSense"
     var captureTimeStored: Instant? = null
     var timerBitsStored: UInt = 0u
 
+    // Battery level
     var battery: Int = -1
 
-    var hasCompletedSetupBefore: Boolean = false
-
+    // Connection status
     private val _connectionStatus = MutableStateFlow(ConnectionStatus.DISCONNECTED)
     val connectionStatus: StateFlow<ConnectionStatus> = _connectionStatus.asStateFlow()
 
-    fun setConnectionStatus(status: ConnectionStatus) {
-        _connectionStatus.value = status
-    }
+    // Streaming status
+    private val _isStreaming = MutableStateFlow(false)
+    val isStreaming: StateFlow<Boolean> = _isStreaming.asStateFlow()
 
-    enum class ConnectionStatus {
-        CONNECTED,
-        CONNECTING,
-        DISCONNECTED
-    }
+    // Device setup status
+    private val _status = MutableStateFlow(initialStatus)
+    val status: StateFlow<BleManager.SetupState> = _status.asStateFlow()
 
+    // Download status
+    private val _isDownloadComplete = MutableStateFlow(false)
+    val isDownloadComplete: StateFlow<Boolean> = _isDownloadComplete.asStateFlow()
+
+    // Packet statistics
     private val _totalPackets = MutableStateFlow(0)
     val totalPackets: StateFlow<Int> = _totalPackets.asStateFlow()
-
-    private val _currentPacket = MutableStateFlow(0)
-    val currentPacket: StateFlow<Int> = _currentPacket.asStateFlow()
 
     private val _currentPacketv2 = MutableStateFlow(0)
     val currentPacketv2: StateFlow<Int> = _currentPacketv2.asStateFlow()
 
-    private val _isStreaming = MutableStateFlow(false)
-    val isStreaming: StateFlow<Boolean> = _isStreaming.asStateFlow()
-
-    private val _status = MutableStateFlow(initialStatus)
-    var status: StateFlow<BleManager.SetupState> = _status.asStateFlow()
-
-    val progressPercent: Int
-        get() = if (_totalPackets.value > 0) (_currentPacket.value * 100) / _totalPackets.value else 0
-
-    fun setTotalPackets(value: Int) {
-        _totalPackets.value = value
-    }
-
-    fun setCurrentPacket(value: Int) {
-        _currentPacket.value = value
-    }
-
-    fun setCurrentPacketv2(value: Int) {
-        _currentPacketv2.value = value
-    }
-
-    fun setIsStreaming(value: Boolean) {
-        _isStreaming.value = value
-    }
-
-    fun setStatus(value: BleManager.SetupState) {
-        _status.value = value
-    }
-
-    private val _isDownloadComplete = MutableStateFlow(false)
-    val isDownloadComplete: StateFlow<Boolean> = _isDownloadComplete.asStateFlow()
-
-    fun setDownloadComplete(complete: Boolean) {
-        _isDownloadComplete.value = complete
-    }
-
+    // Packet flow for real-time data streaming
     private val _packetFlow = MutableSharedFlow<Packet>(replay = 0, extraBufferCapacity = 64)
     val packetFlow = _packetFlow.asSharedFlow()
 
-    suspend fun emitPacket(packet: Packet) {
-        _packetFlow.emit(packet)
-    }
+    // Data aggregator for processing and storing device data
+    val dataAggregator = DeviceDataAggregator()
 
+    /**
+     * Calculates the current progress percentage of packet processing.
+     */
+    val progressPercent: Int
+        get() = if (_totalPackets.value > 0) (_currentPacketv2.value * 100) / _totalPackets.value else 0
+
+    /**
+     * Generates metadata text for the device.
+     */
     val metadataText: String
         get() {
             val deviceType = when (deviceVersionInfo.deviceFamily) {
@@ -135,10 +118,78 @@ class Device(
             return "{\"Device_Type\":\"$deviceType\",\"Device_ID\":\"$deviceId\",\"Device_NVM_ID\":$nvmId,\"Firmware\":\"$firmware\",\"App_Version\":\"$appVersion\"}"
         }
 
-    fun getDeviceInfo(): String {
-        return "Device Filename: $filename, MAC Address String: $macAddressString, MAC Address: ${macAddress.toString(16).uppercase()}, Firmware Version: ${deviceVersionInfo.firmwareVersion}, Device Family: ${deviceVersionInfo.deviceFamily}, Argus Version: ${deviceVersionInfo.argusVersion}"
+    /**
+     * Updates the connection status of the device.
+     */
+    fun setConnectionStatus(status: ConnectionStatus) {
+        _connectionStatus.value = status
     }
 
+    /**
+     * Updates the total number of packets to be processed.
+     */
+    fun setTotalPackets(value: Int) {
+        _totalPackets.value = value
+    }
+
+    /**
+     * Updates the current packet being processed.
+     */
+    fun setCurrentPacketv2(value: Int) {
+        _currentPacketv2.value = value
+    }
+
+    /**
+     * Updates the streaming status of the device.
+     */
+    fun setIsStreaming(value: Boolean) {
+        _isStreaming.value = value
+    }
+
+    /**
+     * Updates the setup status of the device.
+     */
+    fun setStatus(value: BleManager.SetupState) {
+        _status.value = value
+    }
+
+    /**
+     * Updates the download completion status.
+     */
+    fun setDownloadComplete(complete: Boolean) {
+        _isDownloadComplete.value = complete
+    }
+
+    /**
+     * Emits a new packet to the packet flow.
+     */
+    suspend fun emitPacket(packet: Packet) {
+        _packetFlow.emit(packet)
+    }
+
+    /**
+     * Generates a string with detailed device information.
+     */
+    fun getDeviceInfo(): String {
+        return "Device Filename: $filename, MAC Address String: $macAddressString, " +
+                "MAC Address: ${macAddress.toString(16).uppercase()}, " +
+                "Firmware Version: ${deviceVersionInfo.firmwareVersion}, " +
+                "Device Family: ${deviceVersionInfo.deviceFamily}, " +
+                "Argus Version: ${deviceVersionInfo.argusVersion}"
+    }
+
+    /**
+     * Represents the connection status of the device.
+     */
+    enum class ConnectionStatus {
+        CONNECTED,
+        CONNECTING,
+        DISCONNECTED
+    }
+
+    /**
+     * Holds version information for the device.
+     */
     data class DeviceVersionInfo(
         var firmwareVersion: String,
         var nvmVersion: Int,
@@ -146,6 +197,9 @@ class Device(
         var argusVersion: Int
     )
 
+    /**
+     * Represents the family of the device.
+     */
     enum class DeviceFamily(val value: Int) {
         Aerie(0x01),
         EP(0x02),
@@ -156,21 +210,19 @@ class Device(
         Unknown(0xFF);
 
         companion object {
-            fun fromInt(value: Int): DeviceFamily {
-                return values().find { it.value == value } ?: Unknown
-            }
+            fun fromInt(value: Int) = values().find { it.value == value } ?: Unknown
         }
     }
 
     companion object {
-        fun macAddressToLong(macAddress: String): Long {
-            return macAddress.split(":")
+        /**
+         * Converts a MAC address string to a Long value.
+         */
+        fun macAddressToLong(macAddress: String): Long =
+            macAddress.split(":")
                 .map { it.toInt(16).toLong() }
                 .reduce { acc, value -> (acc shl 8) or value }
-        }
     }
-
-    val dataAggregator = DeviceDataAggregator()
 
     /**
      * DeviceDataAggregator handles the aggregation, processing, and storage of packet data.
@@ -211,7 +263,7 @@ class Device(
          *
          * @param packets List of packets to process
          */
-        suspend fun aggregateData(packets: List<Packet>) {
+        fun aggregateData(packets: List<Packet>) {
             Log.d("DeviceDataAggregator", "Processing batch of ${packets.size} packets")
 
             // Limit batch size to prevent processing extremely large batches
@@ -460,9 +512,3 @@ const val ARGUS_1_TIME_DIVISOR = 125000.0
 const val ARGUS_2_TIME_DIVISOR = 32768.0
 const val ARGUS_MAX_TIMER_BITS = 32767u
 const val ARGUS_DATA_PACKET_SIZE = 80
-
-val globalReadingDateFormat: SimpleDateFormat by lazy {
-    val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS")
-    sdf.timeZone = TimeZone.getTimeZone("UTC")
-    sdf
-}
