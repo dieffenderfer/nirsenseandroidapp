@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.util.Log
 import com.dieff.aurelian.BuildConfig
 import com.dieff.aurelian.foregroundService.ble.*
-
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.time.Instant
@@ -12,60 +11,83 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.*
 
+/**
+ * Object responsible for parsing and processing data from NIRSense devices.
+ * Handles both preview (live) data and stored historical data.
+ */
 object DataParser {
-
-    private const val MAX_PACKETS_PER_PROCESS = 20 //limit to avoid memory issues
-
+    private const val MAX_PACKETS_PER_PROCESS = 20 // Limit to avoid memory issues
     private const val AURELIAN_PACKET_SIZE = 120
     private const val AURELIAN_PACKETS_PER_MESSAGE = 5
-
+    private const val MAX_TIMER_BITS = 0xFFFFFFFFU
     private val PLACEHOLDER_TIMESTAMP = Instant.EPOCH
+    private val DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS").withZone(ZoneOffset.UTC)
 
+    // Special packet identifiers
+    private val START_HISTORICAL = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08)
+    private val END_HISTORICAL = byteArrayOf(0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01)
+    private val START_TIMESTAMP = byteArrayOf(0x01, 0x03, 0x05, 0x07, 0x09, 0x0b, 0x0d, 0x0f)
+
+    private var initialHistoryCaptureTime: Instant? = null
+
+    /**
+     * Processes preview (live) data from a device.
+     *
+     * @param data The raw byte array of data from the device
+     * @param device The Device object representing the connected device
+     */
     @SuppressLint("SuspiciousIndentation")
     @Synchronized
     suspend fun processPreviewData(data: ByteArray, device: Device) {
         if (BuildConfig.DEBUG_BLE) {
-            Log.d("DBG", "DataParser - Entered processData")
+            Log.d("DataParser", "Entered processPreviewData")
         }
 
         val deviceVersionInfo = device.deviceVersionInfo
         val deviceMacAddress = device.macAddress
 
-        Log.d("DBG", "Processing preview data for device: $deviceMacAddress")
+        Log.d("DataParser", "Processing preview data for device: $deviceMacAddress")
 
         val packets = when (deviceVersionInfo.deviceFamily) {
             Device.DeviceFamily.Argus -> processArgusData(data, device)
             Device.DeviceFamily.Aurelian -> processAurelianData(data, device)
-            else -> emptyList()
+            else -> {
+                Log.w("DataParser", "Unsupported device family: ${deviceVersionInfo.deviceFamily}")
+                emptyList()
+            }
         }
 
-        if (packets.isNotEmpty() && packets.size <= MAX_PACKETS_PER_PROCESS) {
-            device.dataAggregator.aggregateData(packets)
-            Log.d("DBG", "Aggregated ${packets.size} preview data packets")
-        } else if (packets.size > MAX_PACKETS_PER_PROCESS) {
-            Log.w("DBG", "Packet count exceeds limit. Skipping ${packets.size} packets.")
-        } else {
-            Log.d("DBG", "No packets to process")
+        when {
+            packets.isEmpty() -> Log.d("DataParser", "No packets to process")
+            packets.size <= MAX_PACKETS_PER_PROCESS -> {
+                device.dataAggregator.aggregateData(packets)
+                Log.d("DataParser", "Aggregated ${packets.size} preview data packets")
+            }
+            else -> Log.w("DataParser", "Packet count exceeds limit. Skipping ${packets.size} packets.")
         }
 
         if (BuildConfig.DEBUG_BLE) {
-            Log.d("DBG", "DataParser - Exited processData")
+            Log.d("DataParser", "Exited processPreviewData")
         }
     }
 
+    /**
+     * Processes Aurelian device data.
+     */
     private fun processAurelianData(data: ByteArray, device: Device): List<AurelianPacket> {
         if (data.size < AURELIAN_PACKET_SIZE) {
-            Log.d("DBG", "Aurelian data packet size too small. Expected: $AURELIAN_PACKET_SIZE, Actual: ${data.size}")
+            Log.d("DataParser", "Aurelian data packet size too small. Expected: $AURELIAN_PACKET_SIZE, Actual: ${data.size}")
             return emptyList()
         }
 
-        val packets = parseAurelianSegment(data, device)
-
-        return packets.map { packet ->
+        return parseAurelianSegment(data, device).map { packet ->
             packet.copy(captureTime = setCaptureTimePreviewData(packet, device))
         }
     }
 
+    /**
+     * Parses a segment of Aurelian data into a list of AurelianPacket objects.
+     */
     private fun parseAurelianSegment(packetData: ByteArray, device: Device): List<AurelianPacket> {
         val buffer = ByteBuffer.wrap(packetData).order(ByteOrder.LITTLE_ENDIAN)
 
@@ -102,6 +124,9 @@ object DataParser {
         }
     }
 
+    /**
+     * Converts ADC data from a list of bytes to an Int.
+     */
     private fun convertAdcData(data: List<Byte>): Int {
         val extended = ByteArray(4)
         data.toByteArray().copyInto(extended, 1, 0, 3)
@@ -111,35 +136,37 @@ object DataParser {
         return ByteBuffer.wrap(extended).order(ByteOrder.BIG_ENDIAN).int
     }
 
+    /**
+     * Processes Argus device data.
+     */
     private fun processArgusData(data: ByteArray, device: Device): List<ArgusPacket> {
         if (data.size < ARGUS_DATA_PACKET_SIZE) {
-            Log.d("DBG", "Argus data packet size too small")
+            Log.d("DataParser", "Argus data packet size too small")
             return emptyList()
         }
 
         val totalSegments = data.size / ARGUS_DATA_PACKET_SIZE
-        Log.d("DBG", "Processing Argus data with $totalSegments segments")
+        Log.d("DataParser", "Processing Argus data with $totalSegments segments")
 
-        val packets = mutableListOf<ArgusPacket>()
-
-        for (segmentIndex in 0 until totalSegments) {
+        return (0 until totalSegments).mapNotNull { segmentIndex ->
             val segment = data.copyOfRange(
                 segmentIndex * ARGUS_DATA_PACKET_SIZE,
                 (segmentIndex + 1) * ARGUS_DATA_PACKET_SIZE
             )
 
-            val packet = parseArgusSegment(segment, device)
-            packet.captureTime = setCaptureTimePreviewData(packet, device)
-            packets.add(packet)
-            Log.d("DBG", "Processed Argus data segment $segmentIndex")
+            parseArgusSegment(segment, device).also { packet ->
+                packet.captureTime = setCaptureTimePreviewData(packet, device)
+                Log.d("DataParser", "Processed Argus data segment $segmentIndex")
+            }
         }
-
-        return packets
     }
 
+    /**
+     * Parses a segment of Argus data into an ArgusPacket object.
+     */
     private fun parseArgusSegment(segment: ByteArray, device: Device): ArgusPacket {
         val buffer = ByteBuffer.wrap(segment).order(ByteOrder.LITTLE_ENDIAN)
-        Log.d("DBG", "Parsing Argus segment")
+        Log.d("DataParser", "Parsing Argus segment")
 
         return ArgusPacket(
             deviceMacAddress = device.macAddress,
@@ -190,6 +217,9 @@ object DataParser {
         )
     }
 
+    /**
+     * Sets the capture time for preview data packets.
+     */
     private fun setCaptureTimePreviewData(packet: Packet, device: Device): Instant {
         val currentTimerBits = when (packet) {
             is ArgusPacket -> packet.sequenceCounter.toUInt()
@@ -197,7 +227,7 @@ object DataParser {
             else -> return Instant.now()
         }
 
-        val previousTimerBits = device.timerBitsPreview ?: currentTimerBits
+        val previousTimerBits = device.timerBitsPreview
 
         val timeMultiplier = if (currentTimerBits < previousTimerBits) {
             ((ARGUS_MAX_TIMER_BITS + 1U) - previousTimerBits) + currentTimerBits
@@ -211,7 +241,7 @@ object DataParser {
                 is AurelianPacket -> packet.timeElapsed / 32768.0
                 else -> 0.0
             }
-            val nano = (elapsedTime * 1000000).toLong()
+            val nano = (elapsedTime * 1_000_000).toLong()
             device.captureTimePreview?.plusNanos(nano) ?: Instant.now()
         } else {
             Instant.now()
@@ -223,133 +253,146 @@ object DataParser {
         return captureTime
     }
 
+    /**
+     * Processes stored historical data from a device.
+     */
     @Synchronized
     suspend fun processStoredData(data: ByteArray, device: Device) {
-        Log.d("DBG", "Processing stored data")
+        Log.d("DataParser", "Processing stored data")
 
         when (device.deviceVersionInfo.deviceFamily) {
             Device.DeviceFamily.Argus -> processArgusStoredData(data, device)
             Device.DeviceFamily.Aurelian -> processAurelianStoredData(data, device)
-            else -> {
-                Log.d("DBG", "Unsupported device family")
-                return
-            }
+            else -> Log.w("DataParser", "Unsupported device family for stored data")
         }
     }
 
+    /**
+     * Processes stored data from an Argus device.
+     */
     private suspend fun processArgusStoredData(data: ByteArray, device: Device) {
-        val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS").withZone(ZoneOffset.UTC)
-
-        for (i in 0 until data.size / ARGUS_DATA_PACKET_SIZE) {
-            if (data.size >= (i + 1) * ARGUS_DATA_PACKET_SIZE) {
-                val singleStorage = data.sliceArray(i * ARGUS_DATA_PACKET_SIZE until (i + 1) * ARGUS_DATA_PACKET_SIZE)
-                processArgusStorageSegment(singleStorage, device, dateTimeFormatter)
+        for (i in data.indices step ARGUS_DATA_PACKET_SIZE) {
+            if (data.size >= i + ARGUS_DATA_PACKET_SIZE) {
+                val singleStorage = data.sliceArray(i until i + ARGUS_DATA_PACKET_SIZE)
+                processArgusStorageSegment(singleStorage, device)
             }
         }
     }
 
+    /**
+     * Processes stored data from an Aurelian device.
+     */
     private suspend fun processAurelianStoredData(data: ByteArray, device: Device) {
-        val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS").withZone(ZoneOffset.UTC)
-
         for (i in data.indices step AURELIAN_PACKET_SIZE) {
             if (data.size >= i + AURELIAN_PACKET_SIZE) {
                 val singleStorage = data.sliceArray(i until i + AURELIAN_PACKET_SIZE)
-                processAurelianStorageSegment(singleStorage, device, dateTimeFormatter)
+                processAurelianStorageSegment(singleStorage, device)
             }
         }
     }
 
-    private suspend fun processArgusStorageSegment(singleStorage: ByteArray, device: Device, dateTimeFormatter: DateTimeFormatter) {
-        val singleComp = singleStorage.sliceArray(0 until 8)
+    /**
+     * Processes a single segment of stored Argus data.
+     */
+    private suspend fun processArgusStorageSegment(singleStorage: ByteArray, device: Device) {
+        val singleComp = singleStorage.take(8).toByteArray()
 
         when {
             singleComp.contentEquals(END_HISTORICAL) -> {
-                Log.d("DBG", "End packet received")
+                Log.d("DataParser", "End packet received")
                 onTotalDownloadComplete(device)
-                return
             }
             singleComp.contentEquals(START_HISTORICAL) -> handleStartHistorical(singleStorage, device)
             singleComp.contentEquals(START_TIMESTAMP) -> handleStartTimeStamp(singleStorage)
-            else -> processArgusDataSegment(singleStorage, device, dateTimeFormatter)
+            else -> processArgusDataSegment(singleStorage, device)
         }
     }
 
-    private suspend fun processAurelianStorageSegment(singleStorage: ByteArray, device: Device, dateTimeFormatter: DateTimeFormatter) {
-        val singleComp = singleStorage.sliceArray(0 until 8)
+    /**
+     * Processes a single segment of stored Aurelian data.
+     */
+    private suspend fun processAurelianStorageSegment(singleStorage: ByteArray, device: Device) {
+        val singleComp = singleStorage.take(8).toByteArray()
 
         when {
             singleComp.contentEquals(END_HISTORICAL) -> {
-                Log.d("DBG", "End packet received")
+                Log.d("DataParser", "End packet received")
                 onTotalDownloadComplete(device)
-                return
             }
             singleComp.contentEquals(START_HISTORICAL) -> handleStartHistorical(singleStorage, device)
             singleComp.contentEquals(START_TIMESTAMP) -> handleStartTimeStamp(singleStorage)
-            else -> processAurelianDataSegment(singleStorage, device, dateTimeFormatter)
+            else -> processAurelianDataSegment(singleStorage, device)
         }
     }
 
+    /**
+     * Handles the start of historical data transmission.
+     */
     private fun handleStartHistorical(singleStorage: ByteArray, device: Device) {
-        Log.d("DBG", "Start packet received")
+        Log.d("DataParser", "Start packet received")
         device.captureTimeStored = null
         device.timerBitsStored = 0u
         device.historyIndex = 1
 
-        val packetCountBytes = singleStorage.sliceArray(8 until 12)
-        val packetCount = (packetCountBytes[3].toInt() and 0xFF shl 24) or
-                (packetCountBytes[2].toInt() and 0xFF shl 16) or
-                (packetCountBytes[1].toInt() and 0xFF shl 8) or
-                (packetCountBytes[0].toInt() and 0xFF)
+        val packetCount = ByteBuffer.wrap(singleStorage.sliceArray(8 until 12))
+            .order(ByteOrder.LITTLE_ENDIAN).int
 
-        val DEVICE_PACKET_COUNT_MULTIPLIER = when (device.deviceVersionInfo.deviceFamily) {
+        val devicePacketCountMultiplier = when (device.deviceVersionInfo.deviceFamily) {
             Device.DeviceFamily.Argus -> if (device.deviceVersionInfo.argusVersion >= 2) 1 else 1
-            Device.DeviceFamily.Aurelian -> 5
+            Device.DeviceFamily.Aurelian -> AURELIAN_PACKETS_PER_MESSAGE
             else -> 1
         }
 
-        val totalPackets = packetCount * DEVICE_PACKET_COUNT_MULTIPLIER
+        val totalPackets = packetCount * devicePacketCountMultiplier
 
         if (totalPackets == 0) {
-            Log.d("DBG", "No historical data")
+            Log.d("DataParser", "No historical data")
             onTotalDownloadComplete(device)
             return
         }
 
         device.isStreamingStoredData = true
         device.setTotalPackets(totalPackets)
-        device.setCurrentPacket(0)
+        device.setCurrentPacketv2(0)
     }
 
+    /**
+     * Handles the start timestamp packet for historical data.
+     */
     private fun handleStartTimeStamp(singleStorage: ByteArray) {
-        Log.d("DBG", "Start timestamp packet received")
-        val timestampBytes = singleStorage.sliceArray(8 until 16)
-        var timestamp = 0L
-        for (j in 0 until 8) {
-            timestamp = timestamp shl 8
-            timestamp = timestamp or (timestampBytes[j].toInt() and 0xFF).toLong()
-        }
+        Log.d("DataParser", "Start timestamp packet received")
+        val timestamp = ByteBuffer.wrap(singleStorage.sliceArray(8 until 16))
+            .order(ByteOrder.LITTLE_ENDIAN).long
         initialHistoryCaptureTime = Instant.ofEpochMilli(timestamp)
-        Log.d("DBG", "Initial history capture time: $initialHistoryCaptureTime")
+        Log.d("DataParser", "Initial history capture time: $initialHistoryCaptureTime")
     }
 
-    private suspend fun processArgusDataSegment(singleStorage: ByteArray, device: Device, dateTimeFormatter: DateTimeFormatter) {
+    /**
+     * Processes a single Argus data segment from stored data.
+     */
+    private suspend fun processArgusDataSegment(singleStorage: ByteArray, device: Device) {
         val historyPacketData = parseArgusSegment(singleStorage, device)
-        processHistoryPacketData(historyPacketData, device, dateTimeFormatter)
+        processHistoryPacketData(historyPacketData, device)
     }
 
-    private suspend fun processAurelianDataSegment(singleStorage: ByteArray, device: Device, dateTimeFormatter: DateTimeFormatter) {
+    /**
+     * Processes a single Aurelian data segment from stored data.
+     */
+    private suspend fun processAurelianDataSegment(singleStorage: ByteArray, device: Device) {
         val historyPacketDataList = parseAurelianSegment(singleStorage, device)
         historyPacketDataList.forEach { historyPacketData ->
-            processHistoryPacketData(historyPacketData, device, dateTimeFormatter)
+            processHistoryPacketData(historyPacketData, device)
         }
     }
 
-    private suspend fun processHistoryPacketData(historyPacketData: Packet, device: Device, dateTimeFormatter: DateTimeFormatter) {
+    /**
+     * Processes a single history packet data.
+     */
+    private suspend fun processHistoryPacketData(historyPacketData: Packet, device: Device) {
         val captureTime = setCaptureTimeStoredData(historyPacketData, device)
         historyPacketData.captureTime = captureTime
 
-        val captureTimeString = dateTimeFormatter.format(captureTime)
-        val csvLine = buildCsvLine(device.historyIndex, captureTimeString, historyPacketData)
+        val captureTimeString = DATE_TIME_FORMATTER.format(captureTime)
 
         device.dataAggregator.aggregateData(listOf(historyPacketData))
 
@@ -357,6 +400,9 @@ object DataParser {
         device.setCurrentPacketv2(device.currentPacketv2.value + 1)
     }
 
+    /**
+     * Sets the capture time for stored data packets.
+     */
     private fun setCaptureTimeStoredData(packet: Packet, device: Device): Instant {
         val currentTimerBits = when (packet) {
             is ArgusPacket -> packet.sequenceCounter.toUInt()
@@ -364,7 +410,7 @@ object DataParser {
             else -> return initialHistoryCaptureTime ?: Instant.now()
         }
 
-        val previousTimerBits = device.timerBitsStored ?: currentTimerBits
+        val previousTimerBits = device.timerBitsStored
 
         val timeMultiplier = if (currentTimerBits < previousTimerBits) {
             ((MAX_TIMER_BITS + 1U) - previousTimerBits) + currentTimerBits
@@ -375,13 +421,13 @@ object DataParser {
         val captureTime = if (timeMultiplier == 1U) {
             val elapsedTime = when (packet) {
                 is ArgusPacket -> packet.timer.toDouble() / if (packet.argusVersion == 2) ARGUS_2_TIME_DIVISOR else ARGUS_1_TIME_DIVISOR
-                is AurelianPacket -> (packet.timeElapsed / 32768.0)
+                is AurelianPacket -> packet.timeElapsed / 32768.0
                 else -> 0.0
             }
             val nanos = (elapsedTime * 1_000_000_000).toLong()
             device.captureTimeStored?.plusNanos(nanos) ?: initialHistoryCaptureTime ?: Instant.now()
         } else {
-            Log.w("DBG", "Unexpected time multiplier for stored data: $timeMultiplier")
+            Log.w("DataParser", "Unexpected time multiplier for stored data: $timeMultiplier")
             device.captureTimeStored ?: initialHistoryCaptureTime ?: Instant.now()
         }
 
@@ -391,76 +437,13 @@ object DataParser {
         return captureTime
     }
 
-    private fun buildCsvLine(index: Int, captureTimeString: String, packet: Packet): String {
-        return when (packet) {
-            is ArgusPacket -> buildArgusCsvLine(index, captureTimeString, packet)
-            is AurelianPacket -> buildAurelianCsvLine(index, captureTimeString, packet)
-            else -> throw IllegalArgumentException("Unknown packet type")
-        }
-    }
-
-    private fun buildArgusCsvLine(index: Int, captureTimeString: String, packet: ArgusPacket): String {
-        return buildString {
-            append("$index;")
-            append("$captureTimeString;")
-            append("${packet.mm660_8};${packet.mm660_30};${packet.mm660_35};${packet.mm660_40};")
-            append("${packet.mm735_8};${packet.mm735_30};${packet.mm735_35};${packet.mm735_40};")
-            append("${packet.mm810_8};${packet.mm810_30};${packet.mm810_35};${packet.mm810_40};")
-            append("${packet.mm850_8};${packet.mm850_30};${packet.mm850_35};${packet.mm850_40};")
-            append("${packet.mm890_8};${packet.mm890_30};${packet.mm890_35};${packet.mm890_40};")
-            append("${packet.mmAmbient_8};${packet.mmAmbient_30};${packet.mmAmbient_35};${packet.mmAmbient_40};")
-            append("${packet.temperature};")
-            append("${packet.accelerometerX};${packet.accelerometerY};${packet.accelerometerZ};")
-            append("${packet.timer};")
-            append("${packet.sequenceCounter};")
-            append("${if (packet.eventBit) "TRUE" else "FALSE"};")
-            append("${packet.hbO2};${packet.hbd};")
-            append("${packet.sessionId};")
-            append("${packet.pulseRate};")
-            append("${packet.respiratoryRate};")
-            append("${packet.spO2};")
-            append("${packet.ppgWaveform};")
-            append("${packet.stO2};")
-            append("${packet.reserved8};")
-            append("${packet.reserved16};")
-            append("${packet.reserved32}")
-            appendLine()
-        }
-    }
-
-    private fun buildAurelianCsvLine(index: Int, captureTimeString: String, packet: AurelianPacket): String {
-        return buildString {
-            append("$index;")
-            append("$captureTimeString;")
-            append("${packet.eegC1};${packet.eegC2};${packet.eegC3};${packet.eegC4};${packet.eegC5};${packet.eegC6};")
-            append("${packet.accelerometerX};${packet.accelerometerY};${packet.accelerometerZ};")
-            append("${packet.timeElapsed};")
-            append("${packet.counter};")
-            append("${if (packet.marker) "TRUE" else "FALSE"};")
-            append("${packet.sessionId};")
-            append("${packet.pulseRate};")
-            append("${packet.tdcsImpedance};")
-            append("${packet.tdcsCurrent};")
-            append("${packet.tdcsOnTime};")
-            append("${packet.batteryRSOC};")
-            append("${packet.reserved8};")
-            append("${packet.reserved64}")
-            appendLine()
-        }
-    }
-
+    /**
+     * Handles the completion of the total download process.
+     */
     private fun onTotalDownloadComplete(device: Device) {
-        Log.d("DBG", "Total download complete")
+        Log.d("DataParser", "Total download complete")
         device.isStreamingStoredData = false
         device.historyIndex = 1
         device.setDownloadComplete(true)
     }
-
-
-        private var initialHistoryCaptureTime: Instant? = null
-        private const val MAX_TIMER_BITS = 0xFFFFFFFFU
-        private val START_HISTORICAL = byteArrayOf(0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08)
-        private val END_HISTORICAL = byteArrayOf(0x08, 0x07, 0x06, 0x05, 0x04, 0x03, 0x02, 0x01)
-        private val START_TIMESTAMP = byteArrayOf(0x01, 0x03, 0x05, 0x07, 0x09, 0x0b, 0x0d, 0x0f)
-
 }

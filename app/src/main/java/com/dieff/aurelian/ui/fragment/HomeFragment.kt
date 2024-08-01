@@ -632,9 +632,6 @@ var globalCurrentDevice: Device? = null
 var deviceChangeListener: DeviceChangeListener? = null
 
 
-
-
-
 //
 
 class AlphaTransformation(private val alpha: Float) : BitmapTransformation() {
