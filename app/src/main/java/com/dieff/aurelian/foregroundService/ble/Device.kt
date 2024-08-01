@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothGatt
 import android.util.Log
 import com.dieff.aurelian.AppConfig.appVersion
 import com.dieff.aurelian.globalAppContext
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,6 +17,10 @@ import java.io.IOException
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.util.TimeZone
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
+import kotlin.math.min
 
 @SuppressLint("MissingPermission")
 class Device(
@@ -167,143 +172,285 @@ class Device(
 
     val dataAggregator = DeviceDataAggregator()
 
+    /**
+     * DeviceDataAggregator handles the aggregation, processing, and storage of packet data.
+     */
     inner class DeviceDataAggregator {
-        private val ARRAY_SIZE_GRAPHING = 6 //TODO: set this and other ones dynamically
+        // Constants for array sizes and batch processing limits
+        private val ARRAY_SIZE_GRAPHING = 6
         private val ARRAY_SIZE_SAVING = ARRAY_SIZE_GRAPHING * 100
+        private val MAX_BATCH_SIZE = 1000
 
-        private val MAX_PACKETS_PER_AGGREGATE = 20
-
-        private var dbAggregateArrayGraphing: Array<Packet?> = arrayOfNulls(ARRAY_SIZE_GRAPHING)
-        private var dbAggregateArraySaving: Array<Packet?> = arrayOfNulls(ARRAY_SIZE_SAVING)
+        // Pre-allocate arrays to avoid frequent allocations during processing
+        private val dbAggregateArrayGraphing: Array<Packet?> = arrayOfNulls(ARRAY_SIZE_GRAPHING)
+        private val dbAggregateArraySaving: Array<Packet?> = arrayOfNulls(ARRAY_SIZE_SAVING)
         private var currentIndexGraphing = 0
         private var currentIndexSaving = 0
 
-        private val _graphingDataFlow = MutableSharedFlow<Array<Packet?>>(replay = 1, extraBufferCapacity = 1)
+        // Using AtomicInteger for thread-safe operations on packet count
+        private val _totalProcessedPackets = AtomicInteger(0)
+        val totalProcessedPackets: Int
+            get() = _totalProcessedPackets.get()
+
+        // MutableSharedFlow for emitting graphing data with a buffer to handle backpressure
+        private val _graphingDataFlow = MutableSharedFlow<Array<Packet>>(
+            replay = 1,
+            extraBufferCapacity = 100,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
         val graphingDataFlow = _graphingDataFlow.asSharedFlow()
 
+        // Use a lock for thread-safe CSV writing
+        private val csvLock = ReentrantLock()
+
+        // Reusable StringBuilder for CSV line building to reduce allocations
+        private val csvLineBuilder = StringBuilder(256)
+
+        /**
+         * Aggregates and processes incoming packets.
+         *
+         * @param packets List of packets to process
+         */
         suspend fun aggregateData(packets: List<Packet>) {
+            Log.d("DeviceDataAggregator", "Processing batch of ${packets.size} packets")
 
-            Log.d("DBG", "DeviceDataAggregator aggregateData packets.size = ${packets.size}")
-
-            if (packets.size > MAX_PACKETS_PER_AGGREGATE) {
-                Log.w("DBG", "Packet count exceeds limit. Skipping ${packets.size} packets.")
-                return
+            // Limit batch size to prevent processing extremely large batches
+            val processedCount = min(packets.size, MAX_BATCH_SIZE)
+            if (processedCount < packets.size) {
+                Log.w("DeviceDataAggregator", "Batch size exceeded limit. Processing first $MAX_BATCH_SIZE packets.")
             }
 
-            packets.forEach { packet ->
-                // Graphing
-                if (currentIndexGraphing < ARRAY_SIZE_GRAPHING) {
-                    dbAggregateArrayGraphing[currentIndexGraphing] = packet
-                    currentIndexGraphing++
-                }
+            packets.take(processedCount).forEach { packet ->
+                processPacket(packet)
+            }
 
-                if (currentIndexGraphing == ARRAY_SIZE_GRAPHING) {
-                    _graphingDataFlow.emit(dbAggregateArrayGraphing)
-                    currentIndexGraphing = 0
-                }
+            _totalProcessedPackets.addAndGet(processedCount)
+        }
 
-                // Saving to db
-                if (currentIndexSaving < ARRAY_SIZE_SAVING) {
-                    dbAggregateArraySaving[currentIndexSaving] = packet
-                    currentIndexSaving++
-                }
+        /**
+         * Processes a single packet, updating both graphing and saving buffers.
+         */
+        private fun processPacket(packet: Packet) {
+            // Update graphing buffer
+            dbAggregateArrayGraphing[currentIndexGraphing] = packet
+            currentIndexGraphing++
 
-                if (currentIndexSaving >= ARRAY_SIZE_SAVING) {
-                    saveToCSV(dbAggregateArraySaving)
-                    currentIndexSaving = 0
-                }
+            if (currentIndexGraphing == ARRAY_SIZE_GRAPHING) {
+                emitGraphingData()
+                currentIndexGraphing = 0
+            }
+
+            // Update saving buffer
+            dbAggregateArraySaving[currentIndexSaving] = packet
+            currentIndexSaving++
+
+            if (currentIndexSaving >= ARRAY_SIZE_SAVING) {
+                saveToCSV(dbAggregateArraySaving)
+                currentIndexSaving = 0
             }
         }
 
+        /**
+         * Emits graphing data to the SharedFlow.
+         */
+        private fun emitGraphingData() {
+            try {
+                // Create a copy of the array to avoid mutation issues
+                val graphingData = dbAggregateArrayGraphing.copyOf() as Array<Packet>
+                _graphingDataFlow.tryEmit(graphingData)
+            } catch (e: Exception) {
+                Log.e("DeviceDataAggregator", "Failed to emit graphing data", e)
+            }
+        }
+
+        /**
+         * Saves the aggregated data to a CSV file.
+         *
+         * @param data Array of packets to save
+         */
         private fun saveToCSV(data: Array<Packet?>) {
-            val firstPacket = data.firstOrNull() ?: return
-            val filePath = findOrCreateFile(filename, firstPacket, metadataText)
-            val saveString = StringBuilder()
-
-            for (datum in data) {
-                saveString.append(buildCsvLine(index, datum))
-                index += 1
-            }
-
-            if (filePath != null) {
-                appendStringToCSV(filePath, saveString.toString())
+            csvLock.withLock { // Using a lock to ensure thread-safe file writing
+                val filePath = findOrCreateFile(filename, data.firstOrNull(), metadataText)
+                if (filePath != null) {
+                    try {
+                        FileWriter(filePath, true).use { writer ->
+                            data.forEach { packet ->
+                                if (packet != null) {
+                                    writer.write(buildCsvLine(packet))
+                                }
+                            }
+                        }
+                    } catch (e: IOException) {
+                        Log.e("DeviceDataAggregator", "Failed to write to CSV", e)
+                    }
+                } else {
+                    Log.e("DeviceDataAggregator", "Failed to create or find CSV file")
+                }
             }
         }
 
-        private fun findOrCreateFile(filename: String, packet: Packet, metadata: String): String? {
+        /**
+         * Builds a CSV line for a given packet.
+         */
+        private fun buildCsvLine(packet: Packet): String {
+            csvLineBuilder.clear()
+            when (packet) {
+                is ArgusPacket -> appendArgusCsvLine(csvLineBuilder, packet)
+                is AurelianPacket -> appendAurelianCsvLine(csvLineBuilder, packet)
+                else -> Log.w("DeviceDataAggregator", "Unknown packet type: ${packet::class.simpleName}")
+            }
+            return csvLineBuilder.toString()
+        }
+
+        /**
+         * Appends Argus packet data to the CSV line.
+         */
+        private fun appendArgusCsvLine(sb: StringBuilder, packet: ArgusPacket) {
+            sb.append(packet.captureTime).append(';')
+                .append(packet.mm660_8).append(';')
+                .append(packet.mm660_30).append(';')
+                .append(packet.mm660_35).append(';')
+                .append(packet.mm660_40).append(';')
+                .append(packet.mm735_8).append(';')
+                .append(packet.mm735_30).append(';')
+                .append(packet.mm735_35).append(';')
+                .append(packet.mm735_40).append(';')
+                .append(packet.mm810_8).append(';')
+                .append(packet.mm810_30).append(';')
+                .append(packet.mm810_35).append(';')
+                .append(packet.mm810_40).append(';')
+                .append(packet.mm850_8).append(';')
+                .append(packet.mm850_30).append(';')
+                .append(packet.mm850_35).append(';')
+                .append(packet.mm850_40).append(';')
+                .append(packet.mm890_8).append(';')
+                .append(packet.mm890_30).append(';')
+                .append(packet.mm890_35).append(';')
+                .append(packet.mm890_40).append(';')
+                .append(packet.mmAmbient_8).append(';')
+                .append(packet.mmAmbient_30).append(';')
+                .append(packet.mmAmbient_35).append(';')
+                .append(packet.mmAmbient_40).append(';')
+                .append(packet.temperature).append(';')
+                .append(packet.accelerometerX).append(';')
+                .append(packet.accelerometerY).append(';')
+                .append(packet.accelerometerZ).append(';')
+                .append(packet.timer).append(';')
+                .append(packet.sequenceCounter).append(';')
+                .append(if (packet.eventBit) "TRUE" else "FALSE").append(';')
+                .append(packet.hbO2).append(';')
+                .append(packet.hbd).append(';')
+                .append(packet.sessionId).append(';')
+                .append(packet.pulseRate).append(';')
+                .append(packet.respiratoryRate).append(';')
+                .append(packet.spO2).append(';')
+                .append(packet.ppgWaveform).append(';')
+                .append(packet.stO2).append(';')
+                .append(packet.reserved8).append(';')
+                .append(packet.reserved16).append(';')
+                .append(packet.reserved32).append('\n')
+        }
+
+        /**
+         * Appends Aurelian packet data to the CSV line.
+         */
+        private fun appendAurelianCsvLine(sb: StringBuilder, packet: AurelianPacket) {
+            sb.append(packet.captureTime).append(';')
+                .append(packet.eegC1).append(';')
+                .append(packet.eegC2).append(';')
+                .append(packet.eegC3).append(';')
+                .append(packet.eegC4).append(';')
+                .append(packet.eegC5).append(';')
+                .append(packet.eegC6).append(';')
+                .append(packet.accelerometerX).append(';')
+                .append(packet.accelerometerY).append(';')
+                .append(packet.accelerometerZ).append(';')
+                .append(packet.timeElapsed).append(';')
+                .append(packet.counter).append(';')
+                .append(if (packet.marker) "TRUE" else "FALSE").append(';')
+                .append(packet.sessionId).append(';')
+                .append(packet.pulseRate).append(';')
+                .append(packet.tdcsImpedance).append(';')
+                .append(packet.tdcsCurrent).append(';')
+                .append(packet.tdcsOnTime).append(';')
+                .append(packet.batteryRSOC).append(';')
+                .append(packet.reserved8).append(';')
+                .append(packet.reserved64).append('\n')
+        }
+
+        /**
+         * Finds or creates a file for storing the CSV data.
+         *
+         * @param filename The base filename to use
+         * @param packet A sample packet to determine the header
+         * @param metadata Additional metadata to include in the header
+         * @return The path to the created or found file, or null if creation failed
+         */
+        private fun findOrCreateFile(filename: String, packet: Packet?, metadata: String): String? {
             val directory = File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOCUMENTS), "NIRSense")
-            if (!directory.exists()) {
-                directory.mkdirs()
+            if (!directory.exists() && !directory.mkdirs()) {
+                Log.e("DeviceDataAggregator", "Failed to create directory")
+                return null
             }
 
             val sanitizedFilename = sanitizeFilename(filename)
-            val myFile = File(directory, "$sanitizedFilename.csv")
-            if (!myFile.exists()) {
-                myFile.createNewFile()
-                val header = getHeader(packet, metadata)
-                myFile.writeText(header)
+            val file = File(directory, "$sanitizedFilename.csv")
+
+            if (!file.exists()) {
+                try {
+                    if (!file.createNewFile()) {
+                        Log.e("DeviceDataAggregator", "Failed to create new file")
+                        return null
+                    }
+                    val header = getHeader(packet, metadata)
+                    FileWriter(file).use { it.write(header) }
+                } catch (e: IOException) {
+                    Log.e("DeviceDataAggregator", "Error creating file", e)
+                    return null
+                }
             }
-            return myFile.absolutePath
+
+            return file.absolutePath
         }
 
-        private fun getHeader(packet: Packet, metadata: String): String {
+        /**
+         * Generates the appropriate header for the CSV file based on the packet type.
+         */
+        private fun getHeader(packet: Packet?, metadata: String): String {
             return when (packet) {
                 is ArgusPacket -> getArgusHeader(metadata)
                 is AurelianPacket -> getAurelianHeader(metadata)
-                else -> throw IllegalArgumentException("Unknown packet type")
+                null -> "Timestamp;Unknown Packet Type;$metadata\n"
+                else -> "Timestamp;Unknown Packet Type (${packet::class.simpleName});$metadata\n"
             }
         }
 
-        private fun buildCsvLine(index: Int, packet: Packet?): String {
-            return when (packet) {
-                is ArgusPacket -> buildArgusCsvLine(index, packet)
-                is AurelianPacket -> buildAurelianCsvLine(index, packet)
-                else -> ""
-            }
-        }
-
-        private fun buildArgusCsvLine(index: Int, packet: ArgusPacket): String {
-            return "$index;${packet.captureTime};${packet.mm660_8};${packet.mm660_30};${packet.mm660_35};${packet.mm660_40};" +
-                    "${packet.mm735_8};${packet.mm735_30};${packet.mm735_35};${packet.mm735_40};${packet.mm810_8};${packet.mm810_30};" +
-                    "${packet.mm810_35};${packet.mm810_40};${packet.mm850_8};${packet.mm850_30};${packet.mm850_35};${packet.mm850_40};" +
-                    "${packet.mm890_8};${packet.mm890_30};${packet.mm890_35};${packet.mm890_40};${packet.mmAmbient_8};${packet.mmAmbient_30};" +
-                    "${packet.mmAmbient_35};${packet.mmAmbient_40};${packet.temperature};${packet.accelerometerX};${packet.accelerometerY};" +
-                    "${packet.accelerometerZ};${packet.timer};${packet.sequenceCounter};${if (packet.eventBit) "TRUE" else "FALSE"};${packet.hbO2};" +
-                    "${packet.hbd};${packet.sessionId};${packet.pulseRate};${packet.respiratoryRate};${packet.spO2};${packet.ppgWaveform};" +
-                    "${packet.stO2};${packet.reserved8};${packet.reserved16};${packet.reserved32}\n"
-        }
-
-        private fun buildAurelianCsvLine(index: Int, packet: AurelianPacket): String {
-            return "$index;${packet.captureTime};${packet.eegC1};${packet.eegC2};${packet.eegC3};${packet.eegC4};${packet.eegC5};${packet.eegC6};" +
-                    "${packet.accelerometerX};${packet.accelerometerY};${packet.accelerometerZ};${packet.timeElapsed};${packet.counter};" +
-                    "${if (packet.marker) "TRUE" else "FALSE"};${packet.sessionId};${packet.pulseRate};${packet.tdcsImpedance};${packet.tdcsCurrent};" +
-                    "${packet.tdcsOnTime};${packet.batteryRSOC};${packet.reserved8};${packet.reserved64}\n"
-        }
-
+        /**
+         * Generates the header for Argus packet data.
+         */
         private fun getArgusHeader(metadata: String): String {
-            return "Index;Capture Time;660-8mm;660-30mm;660-35mm;660-40mm;735-8mm;735-30mm;735-35mm;735-40mm;810-8mm;810-30mm;810-35mm;810-40mm;850-8mm;850-30mm;850-35mm;850-40mm;890-8mm;890-30mm;890-35mm;890-40mm;Ambient-8mm;Ambient-30mm;Ambient-35mm;Ambient-40mm;Temperature;AccelX;AccelY;AccelZ;Time_Elapsed;Counter;Marker;HBO2;HBD;Session;Pulse_Rate;Respiratory_Rate;SpO2;PPG;StO2;Reserved8;Reserved16;Reserved32;$metadata\n"
+            return "Index;Capture Time;660-8mm;660-30mm;660-35mm;660-40mm;735-8mm;735-30mm;735-35mm;735-40mm;" +
+                    "810-8mm;810-30mm;810-35mm;810-40mm;850-8mm;850-30mm;850-35mm;850-40mm;890-8mm;890-30mm;" +
+                    "890-35mm;890-40mm;Ambient-8mm;Ambient-30mm;Ambient-35mm;Ambient-40mm;Temperature;AccelX;" +
+                    "AccelY;AccelZ;Time_Elapsed;Counter;Marker;HBO2;HBD;Session;Pulse_Rate;Respiratory_Rate;" +
+                    "SpO2;PPG;StO2;Reserved8;Reserved16;Reserved32;$metadata\n"
         }
 
+        /**
+         * Generates the header for Aurelian packet data.
+         */
         private fun getAurelianHeader(metadata: String): String {
-            return "Index;Capture Time;EEG_C1;EEG_C2;EEG_C3;EEG_C4;EEG_C5;EEG_C6;AccelX;AccelY;AccelZ;Time_Elapsed;Counter;Marker;Session;Pulse_Rate;tDCS_Impedance;tDCS_Current;tDCS_On_Time;Battery_RSOC;Reserved8;Reserved64;$metadata\n"
+            return "Index;Capture Time;EEG_C1;EEG_C2;EEG_C3;EEG_C4;EEG_C5;EEG_C6;AccelX;AccelY;AccelZ;" +
+                    "Time_Elapsed;Counter;Marker;Session;Pulse_Rate;tDCS_Impedance;tDCS_Current;tDCS_On_Time;" +
+                    "Battery_RSOC;Reserved8;Reserved64;$metadata\n"
         }
 
-        private fun appendStringToCSV(filePath: String, data: String) {
-            try {
-                FileWriter(filePath, true).use { it.write(data) }
-            } catch (e: IOException) {
-                e.printStackTrace()
-            }
-        }
-
+        /**
+         * Sanitizes a CSV export's filename to prevent file I/O errors due to invalid characters.
+         */
         private fun sanitizeFilename(filename: String): String {
-            val illegalCharacters = "[/\\\\:*?\"<> |]".toRegex()
-            var sanitizedFilename = filename.replace(illegalCharacters, "_")
-            sanitizedFilename = sanitizedFilename.trim().trimStart('.').trimEnd('.')
-            if (sanitizedFilename.length > 255) {
-                sanitizedFilename = sanitizedFilename.substring(0, 255)
-            }
-            return sanitizedFilename
+            return filename.replace(Regex("[^a-zA-Z0-9.-]"), "_")
+                .take(255)
         }
     }
 }
