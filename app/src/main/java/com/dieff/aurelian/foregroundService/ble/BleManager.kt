@@ -2,11 +2,7 @@ package com.dieff.aurelian.foregroundService.ble
 
 import android.annotation.SuppressLint
 import android.app.Application
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCallback
-import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothGattDescriptor
+import android.bluetooth.*
 import android.bluetooth.le.ScanResult
 import android.os.Handler
 import android.os.Looper
@@ -24,14 +20,24 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import java.util.UUID
 
+/**
+ * BleManager: Singleton object responsible for managing Bluetooth Low Energy (BLE) connections and operations.
+ * It handles device discovery, connection, communication, and data processing for BLE devices.
+ */
 object BleManager : Application() {
+    // Coroutine scope for asynchronous operations
     val scope = CoroutineScope(Dispatchers.Main)
+
+    // StateFlow to hold and observe the list of connected devices
     private val _connectedDevices = MutableStateFlow<List<Device>>(emptyList())
     val connectedDevices: StateFlow<List<Device>> = _connectedDevices.asStateFlow()
 
+    // Connection attempt counters
     private var rcCnt = 0
     private var rcCntMax = 5
     private var numConnects = 0
+
+    // Connection state variables
     lateinit var connectState: ConnState
     private var deviceAddress: String? = null
     private var disconnectAndRetry: Boolean = false
@@ -40,6 +46,7 @@ object BleManager : Application() {
             field = value
         }
 
+    // Application connection state
     private var appConnState: String = "UNDEFINED"
         set(value) {
             val statusPacket = StatusPacket(APP_CONN_STATE, value)
@@ -49,11 +56,14 @@ object BleManager : Application() {
         }
     private var connectTimestamp: Long = 0
 
+    // Current BLE device being processed
     private lateinit var currentBleDevice: ScanResult
 
+    // MTU (Maximum Transmission Unit) size for BLE communication
     private var mtuSize = 23
     private const val mtuSizeRequest = 517
 
+    // UUID constants for BLE services and characteristics
     val SERVICE = UUID.fromString("c5a20001-566c-46fd-8c52-3e06820c7cea")
     val PREVIEW = UUID.fromString("c5a20002-566c-46fd-8c52-3e06820c7cea")
     val STORAGE = UUID.fromString("c5a20003-566c-46fd-8c52-3e06820c7cea")
@@ -69,10 +79,13 @@ object BleManager : Application() {
 
     private var packetCount = -1
 
-    //Queue for onboarding the devices one at a time
+    // Queue for onboarding devices one at a time
     private val onboardingQueue = ArrayDeque<Device>()
     private var isOnboarding = false
 
+    /**
+     * Enum class representing different states of device setup process
+     */
     enum class SetupState(val stateNumber: Int) {
         DISCONNECTED(1),
         CONNECTING(2),
@@ -89,6 +102,9 @@ object BleManager : Application() {
         SETUP_COMPLETE(13);
 
         companion object {
+            /**
+             * Returns a formatted string representation of the current setup state
+             */
             fun getFormattedState(state: SetupState): String {
                 val totalStates = values().size
                 return "Current State: ${state.name} (${state.stateNumber} out of $totalStates)"
@@ -96,27 +112,38 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Initiates a BLE connection to the specified device
+     * @param scanResult The ScanResult object containing device information
+     * @param isDelayed Boolean indicating if the connection should be delayed
+     * @param isRetry Boolean indicating if this is a retry attempt
+     */
     @SuppressLint("MissingPermission")
-    fun connectBle(scanResult: ScanResult, isDelayed: Boolean, isRetry: Boolean) {
+    fun connectBle(device: BluetoothDevice, isDelayed: Boolean, isRetry: Boolean) {
         Log.d("DBG", "Entered connectBle")
         if (!isRetry) {
             rcCnt = 0
-            currentBleDevice = scanResult
         }
         val delay: Long = if (isDelayed) 5000 else 0
         val startTime = SystemClock.elapsedRealtime()
         Log.d("DBG", "CALLING CONNECT LOOPER at time = $startTime")
         Handler(Looper.getMainLooper()).postDelayed({
-            Log.d("DBG", "    device.connectGatt issued for ${scanResult.device.name}")
+            Log.d("DBG", "    device.connectGatt issued for ${device.name}")
             appConnState = "CONNECTING"
             connectTimestamp = SystemClock.elapsedRealtime()
             Log.d("DBG", "IN CONNECT LOOPER at time = $connectTimestamp} delta = ${connectTimestamp - startTime}")
-            scanResult.device.connectGatt(this, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            device.connectGatt(this, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
         }, delay)
     }
 
+    /**
+     * Callback object for handling GATT (Generic Attribute Profile) events
+     */
     @SuppressLint("MissingPermission")
     private val gattCallback = object : BluetoothGattCallback() {
+        /**
+         * Called when the connection state changes
+         */
         override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
             scope.launch {
                 Log.d("DBG", "      BleManager Entered onConnectionStateChange")
@@ -133,6 +160,7 @@ object BleManager : Application() {
                 val currentDateString = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", java.util.Locale.US).format(java.util.Date())
                 val newfilename = sanitizeFilename("${gatt.device.name}_$currentDateString")
 
+                // Find or create a device object
                 var device = _connectedDevices.value.find { it.macAddressString == gatt.device.address }
                 if (device == null) {
                     device = Device(gatt, newfilename, SetupState.DISCONNECTED)
@@ -149,7 +177,7 @@ object BleManager : Application() {
                     }
                 }
 
-                Log.d("DBG", "JUNGLEBOOK device info: " + device.getDeviceInfo())
+                Log.d("DBG", "Device info: " + device.getDeviceInfo())
 
                 val hciStatus = HciStatus.fromValue(status)
                 Log.d("DBG", "      BleManager - onConnectionStateChange hciStatus = $hciStatus")
@@ -175,6 +203,9 @@ object BleManager : Application() {
             }
         }
 
+        /**
+         * Called when services are discovered on the remote device
+         */
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
             scope.launch {
                 Log.d("DBG", "Entered onServiceDiscovered")
@@ -193,6 +224,9 @@ object BleManager : Application() {
             }
         }
 
+        /**
+         * Called when the MTU for a given connection changes
+         */
         override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
             scope.launch {
                 Log.d("DBG", "Entered onMtuChanged")
@@ -214,10 +248,16 @@ object BleManager : Application() {
             }
         }
 
+        /**
+         * Called when the characteristic changes (for Android 11 legacy compability)
+         */
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
             handleCharacteristicChanged(gatt, characteristic, characteristic.value)
         }
 
+        /**
+         * Called when the characteristic changes (for Android 12+)
+         */
         @Suppress("OVERRIDE_DEPRECATION")
         override fun onCharacteristicChanged(
             gatt: BluetoothGatt,
@@ -227,6 +267,9 @@ object BleManager : Application() {
             handleCharacteristicChanged(gatt, characteristic, value)
         }
 
+        /**
+         * Handles characteristic changes (for legacy and modern versions of Android)
+         */
         private fun handleCharacteristicChanged(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic,
@@ -348,6 +391,9 @@ object BleManager : Application() {
             }
         }
 
+        /**
+         * Called when a characteristic read operation completes
+         */
         override fun onCharacteristicRead(
             gatt: BluetoothGatt,
             characteristic: BluetoothGattCharacteristic,
@@ -398,6 +444,9 @@ object BleManager : Application() {
             }
         }
 
+        /**
+         * Called when a characteristic write operation completes
+         */
         override fun onCharacteristicWrite(
             gatt: BluetoothGatt?,
             characteristic: BluetoothGattCharacteristic?,
@@ -419,6 +468,9 @@ object BleManager : Application() {
             }
         }
 
+        /**
+         * Called when a descriptor read operation completes
+         */
         override fun onDescriptorRead(
             gatt: BluetoothGatt?,
             descriptor: BluetoothGattDescriptor?,
@@ -430,6 +482,9 @@ object BleManager : Application() {
             }
         }
 
+        /**
+         * Enables notifications for all characteristics of the device
+         */
         private fun enableNotificationsForAllCharacteristics(gatt: BluetoothGatt) {
             scope.launch {
                 Log.d("DBG", "Entered enableNotificationsForAllCharacteristics")
@@ -484,6 +539,9 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Reads a characteristic from the device
+     */
     @SuppressLint("MissingPermission")
     private fun readCharacteristic(gatt: BluetoothGatt, characteristicUuid: UUID) {
         Log.d("DBG", "Attempting to read characteristic: $characteristicUuid")
@@ -503,6 +561,9 @@ object BleManager : Application() {
         } ?: Log.e("DBG", "Characteristic not found: $characteristicUuid")
     }
 
+    /**
+     * Writes a characteristic to the device with response
+     */
     @SuppressLint("MissingPermission")
     private fun writeCharacteristicWithResponse(gatt: BluetoothGatt, characteristicUuid: UUID, payload: ByteArray) {
         Log.d("DBG", "Entered writeCharacteristicWithResponse")
@@ -515,6 +576,9 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Writes a characteristic to the device without response
+     */
     @SuppressLint("MissingPermission")
     private fun writeCharacteristicWithoutResponse(gatt: BluetoothGatt, characteristicUuid: UUID, payload: ByteArray) {
         Log.d("DBG", "Entered writeCharacteristicWithoutResponse")
@@ -527,6 +591,9 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Handles successful connection to a device
+     */
     @SuppressLint("MissingPermission")
     private fun connected(device: Device) {
         scope.launch {
@@ -573,6 +640,9 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Handles device disconnection
+     */
     private fun disconnected(prevConnectState: ConnState, device: Device) {
         scope.launch {
             Log.d("DBG", "Entered disconnected")
@@ -585,6 +655,9 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Completes the disconnection process for a device
+     */
     @SuppressLint("MissingPermission")
     private fun completeDisconnect(device: Device) {
         scope.launch {
@@ -596,6 +669,9 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Disconnects all connected BLE devices
+     */
     @SuppressLint("MissingPermission")
     fun disconnectBle() {
         scope.launch {
@@ -606,6 +682,11 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Sanitizes a filename by replacing illegal characters and trimming length
+     * @param filename The original filename to sanitize
+     * @return The sanitized filename
+     */
     fun sanitizeFilename(filename: String): String {
         Log.d("DBG", "Entering sanitizeFilename function")
         // Characters not allowed in filenames on Android: / \ : * ? " < > |
@@ -629,6 +710,11 @@ object BleManager : Application() {
         return sanitizedFilename
     }
 
+    /**
+     * Updates the setup state of a device and performs actions based on the new state
+     * @param device The device to update
+     * @param newState The new setup state
+     */
     private fun updateDeviceSetupState(device: Device, newState: SetupState) {
         Log.d("DBG", "Updating device ${device.macAddressString} state to $newState")
         device.setStatus(newState)
@@ -641,7 +727,7 @@ object BleManager : Application() {
                         device.bluetoothGatt.device,
                         0, 0, 0, 0, 0, 0, 0, null, 0
                     )
-                    connectBle(scanResult, isDelayed = false, isRetry = true)
+                    connectBle(device.bluetoothGatt.device, isDelayed = false, isRetry = true)
                 }
             }
             SetupState.CONNECTING -> {
@@ -705,13 +791,18 @@ object BleManager : Application() {
         }
     }
 
-    //For onboarding devices one at at time
+    /**
+     * Adds a device to the onboarding queue
+     * @param device The device to add to the queue
+     */
     private fun addToOnboardingQueue(device: Device) {
         onboardingQueue.addLast(device)
         processOnboardingQueue()
     }
 
-    //For onboarding devices one at at time
+    /**
+     * Processes the onboarding queue, setting up devices one at a time
+     */
     private fun processOnboardingQueue() {
         if (isOnboarding || onboardingQueue.isEmpty()) return
 
@@ -719,6 +810,10 @@ object BleManager : Application() {
         val device = onboardingQueue.removeFirst()
         updateDeviceSetupState(device, SetupState.CONNECTED)
     }
+
+    /**
+     * Stops sampling for all connected devices
+     */
     @SuppressLint("MissingPermission")
     fun stopSamplingAllDevices() {
         scope.launch {
@@ -733,20 +828,26 @@ object BleManager : Application() {
         }
     }
 
-
+    /**
+     * Sends export flash data command to a specific device
+     * @param device The device to send the command to
+     */
     @SuppressLint("MissingPermission")
     fun sendExportFlashDataCommandDevice(device: Device) {
         scope.launch {
             Log.d("DBG", "Entered sendExportFlashDataCommandDevice")
             val gatt = device.bluetoothGatt
             writeCharacteristicWithoutResponse(gatt, COMMAND_UUID, Commands.STOP_SAMPLING)
-            //stopSamplingAllDevices()
             device.setIsStreaming(false)
             writeCharacteristicWithoutResponse(gatt, COMMAND_UUID, Commands.SEND_STORED_DATA)
             Log.d("DBG", "Exited sendExportFlashDataCommandDevice")
         }
     }
 
+    /**
+     * Sends clear flash command to a specific device
+     * @param device The device to send the command to
+     */
     @SuppressLint("MissingPermission")
     fun sendClearFlashCommandDevice(device: Device) {
         scope.launch {
@@ -757,16 +858,24 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Enables save mode for a specific device
+     * @param device The device to enable save mode for
+     */
     @SuppressLint("MissingPermission")
     fun enableSaveModeDevice(device: Device) {
         scope.launch {
-            Log.d("DBG", "Entered sendClearFlashCommandDevice")
+            Log.d("DBG", "Entered enableSaveModeDevice")
             val gatt = device.bluetoothGatt
             enableSaveModeGatt(gatt)
-            Log.d("DBG", "Exited sendClearFlashCommandDevice")
+            Log.d("DBG", "Exited enableSaveModeDevice")
         }
     }
 
+    /**
+     * Starts sampling for a specific device
+     * @param device The device to start sampling
+     */
     @SuppressLint("MissingPermission")
     fun startSamplingDevice(device: Device) {
         scope.launch {
@@ -778,6 +887,10 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Stops sampling for a specific device
+     * @param device The device to stop sampling
+     */
     @SuppressLint("MissingPermission")
     fun stopSamplingDevice(device: Device) {
         scope.launch {
@@ -789,6 +902,10 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Starts sampling for a device using its GATT connection
+     * @param gatt The BluetoothGatt connection to use
+     */
     @SuppressLint("MissingPermission")
     fun startSamplingGatt(gatt: BluetoothGatt) {
         scope.launch {
@@ -799,6 +916,10 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Stops sampling for a device using its GATT connection
+     * @param gatt The BluetoothGatt connection to use
+     */
     @SuppressLint("MissingPermission")
     fun stopSamplingGatt(gatt: BluetoothGatt) {
         scope.launch {
@@ -809,6 +930,10 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Stops sampling for a device during initial setup using its GATT connection
+     * @param gatt The BluetoothGatt connection to use
+     */
     @SuppressLint("MissingPermission")
     fun stopSamplingGattInitialSetup(gatt: BluetoothGatt) {
         scope.launch {
@@ -827,12 +952,24 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Retrieves a device by its ID
+     * @param deviceId The ID of the device to retrieve
+     * @return The Device object matching the given ID
+     * @throws IllegalArgumentException if no device is found with the given ID
+     */
     suspend fun getDeviceById(deviceId: String): Device {
         val devices = connectedDevices.first() // Collect the first (and only) value from the flow
         return devices.find { it.macAddressString == deviceId }
             ?: throw IllegalArgumentException("Device not found")
     }
 
+    /**
+     * Handles connection state change errors
+     * @param status The HCI status of the connection
+     * @param prevConnectState The previous connection state
+     * @param newState The new connection state
+     */
     @SuppressLint("MissingPermission")
     private fun connectionStateChangeError(status: HciStatus, prevConnectState: ConnState, newState: ConnState) {
         scope.launch {
@@ -840,27 +977,36 @@ object BleManager : Application() {
             Log.d("DBG", "  CONNECTION ERROR $status, prevConnectionState = $prevConnectState, newState = $newState")
             Log.d("DBG", "  appConnState = $appConnState ; connectState = $newState")
             Log.d("DBG", "rcCnt = $rcCnt rcCntMax = $rcCntMax")
+
             if (rcCnt == rcCntMax) {
                 uitMessage("Rescan needed")
             }
+
+            val mostRecentDevice = _connectedDevices.value.lastOrNull()
+
             if (appConnState == "CONNECTING") {
                 _connectedDevices.value.forEach { completeDisconnect(it) }
                 if ((rcCnt < rcCntMax) && (status == HciStatus.ERROR_133) && (newState == ConnState.DISCONNECTED)) {
                     ++rcCnt
                     Log.d("DBG", "    Attempting automatic reconnection $rcCnt")
-                    Log.d("DBG", "currentBleDevice = ${currentBleDevice.device.name}")
-                    connectBle(currentBleDevice, true, isRetry = true)
+                    mostRecentDevice?.let { device ->
+                        Log.d("DBG", "Attempting to reconnect to ${device.bluetoothGatt.device.name}")
+                        connectBle(device.bluetoothGatt.device, true, isRetry = true)
+                    } ?: Log.e("DBG", "No device to reconnect to")
                 } else {
                     Log.d("DBG", "Exhausted reconnect attempts")
                 }
             }
+
             if (appConnState == "CONNECTED") {
                 _connectedDevices.value.forEach { completeDisconnect(it) }
                 if ((rcCnt < rcCntMax) && newState == ConnState.DISCONNECTED && status == HciStatus.CONNECTION_TIMEOUT) {
                     ++rcCnt
                     Log.d("DBG", "    Attempting automatic reconnection after loss of signal $rcCnt")
-                    Log.d("DBG", "currentBleDevice = ${currentBleDevice.device.name}")
-                    connectBle(currentBleDevice, true, isRetry = true)
+                    mostRecentDevice?.let { device ->
+                        Log.d("DBG", "Attempting to reconnect to ${device.bluetoothGatt.device.name}")
+                        connectBle(device.bluetoothGatt.device, true, isRetry = true)
+                    } ?: Log.e("DBG", "No device to reconnect to")
                 } else {
                     Log.d("DBG", "Exhausted reconnect attempts after signal loss")
                 }
@@ -868,6 +1014,11 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Extension function to find a characteristic by UUID in a BluetoothGatt
+     * @param uuid The UUID of the characteristic to find
+     * @return The BluetoothGattCharacteristic if found, null otherwise
+     */
     private fun BluetoothGatt.findCharacteristic(uuid: UUID): BluetoothGattCharacteristic? {
         services?.forEach { service ->
             service.characteristics?.firstOrNull { characteristic ->
@@ -879,6 +1030,9 @@ object BleManager : Application() {
         return null
     }
 
+    /**
+     * Extension function to print the GATT table (services and characteristics) of a BluetoothGatt
+     */
     fun BluetoothGatt.printGattTable() {
         if (services.isEmpty()) {
             Log.d("DBG", "No service and characteristic available, call discoverServices() first?")
@@ -904,6 +1058,10 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Initiates MTU size negotiation with connected devices
+     * @param mtuSizeRequest The desired MTU size
+     */
     @SuppressLint("MissingPermission")
     fun negotiateMtuSize(mtuSizeRequest: Int) {
         scope.launch {
@@ -917,6 +1075,10 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Extension function to print the properties of a BluetoothGattCharacteristic
+     * @return A string representation of the characteristic's properties
+     */
     private fun BluetoothGattCharacteristic.printProperties(): String = mutableListOf<String>().apply {
         if (isReadable()) add("READABLE")
         if (isWritable()) add("WRITABLE")
@@ -926,43 +1088,93 @@ object BleManager : Application() {
         if (isEmpty()) add("EMPTY")
     }.joinToString()
 
+    /**
+     * Extension function to check if a BluetoothGattCharacteristic is readable
+     * @return True if the characteristic is readable, false otherwise
+     */
     private fun BluetoothGattCharacteristic.isReadable(): Boolean =
         containsProperty(BluetoothGattCharacteristic.PROPERTY_READ)
 
+    /**
+     * Extension function to check if a BluetoothGattCharacteristic is writable
+     * @return True if the characteristic is writable, false otherwise
+     */
     private fun BluetoothGattCharacteristic.isWritable(): Boolean =
         containsProperty(BluetoothGattCharacteristic.PROPERTY_WRITE)
 
+    /**
+     * Extension function to check if a BluetoothGattCharacteristic is writable without response
+     * @return True if the characteristic is writable without response, false otherwise
+     */
     private fun BluetoothGattCharacteristic.isWritableWithoutResponse(): Boolean =
         containsProperty(BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE)
 
+    /**
+     * Extension function to check if a BluetoothGattCharacteristic is indicatable
+     * @return True if the characteristic is indicatable, false otherwise
+     */
     private fun BluetoothGattCharacteristic.isIndicatable(): Boolean =
         containsProperty(BluetoothGattCharacteristic.PROPERTY_INDICATE)
 
+    /**
+     * Extension function to check if a BluetoothGattCharacteristic is notifiable
+     * @return True if the characteristic is notifiable, false otherwise
+     */
     private fun BluetoothGattCharacteristic.isNotifiable(): Boolean =
         containsProperty(BluetoothGattCharacteristic.PROPERTY_NOTIFY)
 
+    /**
+     * Extension function to check if a BluetoothGattCharacteristic contains a specific property
+     * @param property The property to check for
+     * @return True if the characteristic contains the property, false otherwise
+     */
     private fun BluetoothGattCharacteristic.containsProperty(property: Int): Boolean =
         properties and property != 0
 
+    /**
+     * Extension function to print the properties of a BluetoothGattDescriptor
+     * @return A string representation of the descriptor's properties
+     */
     private fun BluetoothGattDescriptor.printProperties(): String = mutableListOf<String>().apply {
         if (isReadable()) add("READABLE")
         if (isWritable()) add("WRITABLE")
         if (isEmpty()) add("EMPTY")
     }.joinToString()
 
+    /**
+     * Extension function to check if a BluetoothGattDescriptor is readable
+     * @return True if the descriptor is readable, false otherwise
+     */
     private fun BluetoothGattDescriptor.isReadable(): Boolean =
         containsPermission(BluetoothGattDescriptor.PERMISSION_READ)
 
+    /**
+     * Extension function to check if a BluetoothGattDescriptor is writable
+     * @return True if the descriptor is writable, false otherwise
+     */
     private fun BluetoothGattDescriptor.isWritable(): Boolean =
         containsPermission(BluetoothGattDescriptor.PERMISSION_WRITE)
 
+    /**
+     * Extension function to check if a BluetoothGattDescriptor contains a specific permission
+     * @param permission The permission to check for
+     * @return True if the descriptor contains the permission, false otherwise
+     */
     private fun BluetoothGattDescriptor.containsPermission(permission: Int): Boolean =
         permissions and permission != 0
 
+    /**
+     * Placeholder function for UI message handling
+     * @param msg The message to display
+     */
     private fun uitMessage(msg: String) {
         // TODO: Implement UI message handling if needed
     }
 
+    /**
+     * Forwards a status packet from BLE to the repository
+     * @param statusPacket The status packet to forward
+     */
     private fun fwdStatusBleToRepository(statusPacket: StatusPacket) {
         Log.d("DBG", "      BleManager - Entered fwdStatusBleToRepository")
         scope.launch {
@@ -971,6 +1183,10 @@ object BleManager : Application() {
         Log.d("DBG", "      BleManager - Exited fwdStatusBLeToRepository")
     }
 
+    /**
+     * Enables preview mode for a device using its GATT connection
+     * @param gatt The BluetoothGatt connection to use
+     */
     @SuppressLint("MissingPermission")
     fun enablePreviewModeGatt(gatt: BluetoothGatt) {
         scope.launch {
@@ -988,6 +1204,10 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Enables save mode for a device using its GATT connection
+     * @param gatt The BluetoothGatt connection to use
+     */
     @SuppressLint("MissingPermission")
     fun enableSaveModeGatt(gatt: BluetoothGatt) {
         scope.launch {
@@ -1005,6 +1225,10 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Sends a timestamp to a device using its GATT connection
+     * @param gatt The BluetoothGatt connection to use
+     */
     @SuppressLint("MissingPermission")
     fun sendTimestamp(gatt: BluetoothGatt) {
         scope.launch {
@@ -1034,6 +1258,10 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Requests the battery level from a device using its GATT connection
+     * @param gatt The BluetoothGatt connection to use
+     */
     @SuppressLint("MissingPermission")
     private fun requestBatteryLevel(gatt: BluetoothGatt) {
         scope.launch {
@@ -1052,6 +1280,10 @@ object BleManager : Application() {
         }
     }
 
+    /**
+     * Requests the firmware version from a device using its GATT connection
+     * @param gatt The BluetoothGatt connection to use
+     */
     private fun requestFirmwareVersion(gatt: BluetoothGatt) {
         Log.d("DBG", "Requesting firmware version and battery level")
         val requestFirmwareVersion = byteArrayOf(0x06)
@@ -1072,6 +1304,10 @@ object BleManager : Application() {
         }, 1000)
     }
 
+    /**
+     * Requests the NVM (Non-Volatile Memory) version from a device using its GATT connection
+     * @param gatt The BluetoothGatt connection to use
+     */
     private fun requestNVM(gatt: BluetoothGatt) {
         Log.d("DBG", "Requesting NVM version")
         val requestNVM = byteArrayOf(0x0F)
@@ -1091,6 +1327,9 @@ object BleManager : Application() {
         }, 1000)
     }
 
+    /**
+     * Object containing command byte arrays for various device operations
+     */
     private object Commands {
         val START_BLINK = byteArrayOf(0x00)
         val STOP_BLINK = byteArrayOf(0x01)
@@ -1109,9 +1348,16 @@ object BleManager : Application() {
         val SEND_TIMESTAMP = byteArrayOf(0x10)
     }
 
+    /**
+     * Extension function to convert a ByteArray to a hexadecimal string
+     * @return A string representation of the ByteArray in hexadecimal format
+     */
     fun ByteArray.toHexString(): String =
         joinToString(separator = " ", prefix = "0x") { String.format("%02X", it) }
 
+    /**
+     * Object containing configuration byte arrays for various device modes
+     */
     private object Configurations {
         const val SAVE_PATIENT_ID_START: Byte = 0x11
         val PREVIEW_MODE_ON = byteArrayOf(0x05, 0x01)
