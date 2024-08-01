@@ -28,11 +28,6 @@ class SharedViewModel() : ViewModel() {
     // Create scope for coroutine to run in
     private val scope = CoroutineScope(Dispatchers.IO)
 
-//    private val messagesEventChannel = Channel<MessagesEvent>()
-//    val messagesEvent = messagesEventChannel.receiveAsFlow()
-
-    var firstTime = true
-
     override fun onCleared() {
         super.onCleared()
         Log.d("DBG", "  SharedViewModel - Entered/Exited onCleared")

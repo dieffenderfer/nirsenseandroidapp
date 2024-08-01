@@ -119,7 +119,7 @@ class MyService : Service() {
                 }
                 MSG_BT_CONNECT -> {
                     val scanResultNdx = data.getInt("scanResultNdx")
-                    myBleManager.connectBle(scanResults[scanResultNdx],isDelayed = true, isRetry = false)
+                    myBleManager.connectBle(scanResults[scanResultNdx], isDelayed = true, isRetry = false)
                 }
                 MSG_BT_DISCONNECT -> {
                     myBleManager.disconnectBle()

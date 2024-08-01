@@ -32,6 +32,7 @@ class Device(
     var filename: String,
     initialStatus: BleManager.SetupState
 ) {
+
     // Device identification properties
     val macAddressString: String = bluetoothGatt.device.address
     val macAddress: Long = macAddressToLong(macAddressString)
@@ -79,7 +80,6 @@ class Device(
     // Packet statistics
     private val _totalPackets = MutableStateFlow(0)
     val totalPackets: StateFlow<Int> = _totalPackets.asStateFlow()
-
     private val _currentPacketv2 = MutableStateFlow(0)
     val currentPacketv2: StateFlow<Int> = _currentPacketv2.asStateFlow()
 

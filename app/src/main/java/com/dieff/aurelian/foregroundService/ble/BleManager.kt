@@ -119,20 +119,21 @@ object BleManager : Application() {
      * @param isRetry Boolean indicating if this is a retry attempt
      */
     @SuppressLint("MissingPermission")
-    fun connectBle(device: BluetoothDevice, isDelayed: Boolean, isRetry: Boolean) {
+    fun connectBle(scanResult: ScanResult, isDelayed: Boolean, isRetry: Boolean) {
         Log.d("DBG", "Entered connectBle")
         if (!isRetry) {
             rcCnt = 0
+            currentBleDevice = scanResult
         }
         val delay: Long = if (isDelayed) 5000 else 0
         val startTime = SystemClock.elapsedRealtime()
         Log.d("DBG", "CALLING CONNECT LOOPER at time = $startTime")
         Handler(Looper.getMainLooper()).postDelayed({
-            Log.d("DBG", "    device.connectGatt issued for ${device.name}")
+            Log.d("DBG", "    device.connectGatt issued for ${scanResult.device.name}")
             appConnState = "CONNECTING"
             connectTimestamp = SystemClock.elapsedRealtime()
             Log.d("DBG", "IN CONNECT LOOPER at time = $connectTimestamp} delta = ${connectTimestamp - startTime}")
-            device.connectGatt(this, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
+            scanResult.device.connectGatt(this, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
         }, delay)
     }
 
@@ -727,7 +728,7 @@ object BleManager : Application() {
                         device.bluetoothGatt.device,
                         0, 0, 0, 0, 0, 0, 0, null, 0
                     )
-                    connectBle(device.bluetoothGatt.device, isDelayed = false, isRetry = true)
+                    connectBle(scanResult, isDelayed = false, isRetry = true)
                 }
             }
             SetupState.CONNECTING -> {
@@ -977,36 +978,27 @@ object BleManager : Application() {
             Log.d("DBG", "  CONNECTION ERROR $status, prevConnectionState = $prevConnectState, newState = $newState")
             Log.d("DBG", "  appConnState = $appConnState ; connectState = $newState")
             Log.d("DBG", "rcCnt = $rcCnt rcCntMax = $rcCntMax")
-
             if (rcCnt == rcCntMax) {
                 uitMessage("Rescan needed")
             }
-
-            val mostRecentDevice = _connectedDevices.value.lastOrNull()
-
             if (appConnState == "CONNECTING") {
                 _connectedDevices.value.forEach { completeDisconnect(it) }
                 if ((rcCnt < rcCntMax) && (status == HciStatus.ERROR_133) && (newState == ConnState.DISCONNECTED)) {
                     ++rcCnt
                     Log.d("DBG", "    Attempting automatic reconnection $rcCnt")
-                    mostRecentDevice?.let { device ->
-                        Log.d("DBG", "Attempting to reconnect to ${device.bluetoothGatt.device.name}")
-                        connectBle(device.bluetoothGatt.device, true, isRetry = true)
-                    } ?: Log.e("DBG", "No device to reconnect to")
+                    Log.d("DBG", "currentBleDevice = ${currentBleDevice.device.name}")
+                    connectBle(currentBleDevice, true, isRetry = true)
                 } else {
                     Log.d("DBG", "Exhausted reconnect attempts")
                 }
             }
-
             if (appConnState == "CONNECTED") {
                 _connectedDevices.value.forEach { completeDisconnect(it) }
                 if ((rcCnt < rcCntMax) && newState == ConnState.DISCONNECTED && status == HciStatus.CONNECTION_TIMEOUT) {
                     ++rcCnt
                     Log.d("DBG", "    Attempting automatic reconnection after loss of signal $rcCnt")
-                    mostRecentDevice?.let { device ->
-                        Log.d("DBG", "Attempting to reconnect to ${device.bluetoothGatt.device.name}")
-                        connectBle(device.bluetoothGatt.device, true, isRetry = true)
-                    } ?: Log.e("DBG", "No device to reconnect to")
+                    Log.d("DBG", "currentBleDevice = ${currentBleDevice.device.name}")
+                    connectBle(currentBleDevice, true, isRetry = true)
                 } else {
                     Log.d("DBG", "Exhausted reconnect attempts after signal loss")
                 }
