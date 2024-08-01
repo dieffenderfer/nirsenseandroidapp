@@ -63,21 +63,34 @@ import com.bumptech.glide.load.resource.bitmap.BitmapTransformation
 import kotlinx.coroutines.flow.collectLatest
 import java.security.MessageDigest
 
+/**
+ * HomeFragment is the main screen of the application.
+ * It handles device scanning, connection, and displays device status.
+ */
 @SuppressLint("SetTextI18n")
 class HomeFragment : Fragment(), DeviceChangeListener {
 
+    // Coroutine scope for asynchronous operations
     private val scope = CoroutineScope(Dispatchers.IO)
 
+    // View binding
     private var _binding: FragmentHomeBinding? = null
     private val binding get() = _binding!!
+
+    // Shared ViewModel for communication between fragments
     private val sharedViewModel: SharedViewModel by activityViewModels()
 
+    // UI elements
     private lateinit var statusTextView: TextView
-
     lateinit var scanPopupWindow: PopupWindow
     lateinit var scan_results_recycler_view: RecyclerView
     lateinit var textView_scanMsg: TextView
+    private lateinit var connectButton: Button
+
+    // List to store scan results
     private var miniScanResults = mutableListOf<MiniScanResult>()
+
+    // Adapter for displaying scan results
     private val scanResultAdapter by lazy {
         ScanResultAdapter(
             miniScanResults,
@@ -86,20 +99,22 @@ class HomeFragment : Fragment(), DeviceChangeListener {
             }
         )
     }
-    private lateinit var connectButton: Button
 
+    // Flags for Bluetooth and permission states
     private var isBluetoothEnabled: Boolean = false
     private var isAccFineLocGranted: Boolean = false
     private var isBTScanGranted: Boolean = false
     private var isBTConnectGranted: Boolean = false
     private var isPostNotificationsGranted: Boolean = false
 
+    // Continuations for handling asynchronous permission requests
     private var permissionContinuation: CancellableContinuation<Map<String, Boolean>>? = null
     private val requestMultiplePermissionsLauncher =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grantResults ->
             permissionContinuation?.resume(grantResults)
         }
 
+    // Continuations for handling Bluetooth enable request
     private var bluetoothContinuation: Continuation<Boolean>? = null
     private val enableBluetoothLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
@@ -108,11 +123,14 @@ class HomeFragment : Fragment(), DeviceChangeListener {
             bluetoothContinuation?.resume(false)
         }
     }
+
+    // Bluetooth adapter
     private val bluetoothAdapter: BluetoothAdapter by lazy {
         val bluetoothManager = context?.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothManager.adapter
     }
 
+    // Scan filter settings
     private var scanFilterType: String = "CONTAINS_NAME"
     private var scanFilterDevName: String = when (globalAppID) {
         AppID.AURELIAN_APP -> "NIRSENSE"
@@ -120,9 +138,17 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         AppID.ANY_DEVICE_APP -> "NIRSENSE"
     }
 
+    // Job for observing device changes
     private var deviceObserverJob: Job? = null
 
+    // Blur view for visual effects
     private lateinit var blurView: BlurView
+
+    // Counter for permission request attempts
+    private var permissionRequestCount: Int = 0
+
+    // Flag to prevent multiple navigations to MultiGraphFragment
+    private var hasNavigatedToMultiGraph = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -130,19 +156,18 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         sharedViewModel.setup()
         Log.d("DBG","HomeFragment - Exited onCreate")
     }
-
-    private var permissionRequestCount : Int = 0
-
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
 
         statusTextView = binding.statusTextView
 
+        // Initialize and add blur view
         blurView = BlurView(requireContext())
         (binding.root as ViewGroup).addView(blurView, 0)
         blurView.layoutParams = ViewGroup.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         blurView.visibility = View.GONE
 
+        // Observe connected devices and update UI accordingly
         viewLifecycleOwner.lifecycleScope.launch {
             viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 BleManager.connectedDevices.collect { devices ->
@@ -155,6 +180,9 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         return binding.root
     }
 
+    /**
+     * Updates the status text during onboarding based on the number of connected devices
+     */
     private fun updateStatusText(connectedDevicesCount: Int) {
         val numberStrings = arrayOf(
             "zero", "first", "second", "third", "fourth", "fifth",
@@ -265,8 +293,6 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         hasNavigatedToMultiGraph = false
         observeGlobalCurrentDevice()
     }
-
-    private var hasNavigatedToMultiGraph = false
 
     override fun onPause() {
         super.onPause()
