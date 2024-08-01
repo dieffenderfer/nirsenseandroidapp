@@ -32,6 +32,10 @@ object BleManager : Application() {
     private val _connectedDevices = MutableStateFlow<List<Device>>(emptyList())
     val connectedDevices: StateFlow<List<Device>> = _connectedDevices.asStateFlow()
 
+    // StateFlow to hold and observe the list of all devices (connected and disconnected)
+    private val _allDevices = MutableStateFlow<List<Device>>(emptyList())
+    val allDevices: StateFlow<List<Device>> = _allDevices.asStateFlow()
+
     // Connection attempt counters
     private var rcCnt = 0
     private var rcCntMax = 5
@@ -135,6 +139,22 @@ object BleManager : Application() {
             Log.d("DBG", "IN CONNECT LOOPER at time = $connectTimestamp} delta = ${connectTimestamp - startTime}")
             scanResult.device.connectGatt(this, false, gattCallback, BluetoothDevice.TRANSPORT_LE)
         }, delay)
+    }
+
+    /**
+     * For when the user wants to manually remove a device from the list of all devices and closes its GATT connection
+     * (The user's intent makes this different than an unintended disconnect)
+     * @param device The device to be removed
+     */
+    @SuppressLint("MissingPermission")
+    fun removeDevice(device: Device) {
+        scope.launch {
+            Log.d("DBG", "Manually removing device ${device.macAddressString}")
+            device.bluetoothGatt.disconnect()
+            device.bluetoothGatt.close()
+            _allDevices.update { it.filter { d -> d.macAddress != device.macAddress } }
+            _connectedDevices.update { it.filter { d -> d.macAddress != device.macAddress } }
+        }
     }
 
     /**
@@ -594,6 +614,7 @@ object BleManager : Application() {
 
     /**
      * Handles successful connection to a device
+     * @param device The device that has been connected
      */
     @SuppressLint("MissingPermission")
     private fun connected(device: Device) {
@@ -611,21 +632,28 @@ object BleManager : Application() {
             val bondstate = BondState.fromValue(device.bluetoothGatt.device.bondState)
             Log.d("DBG", "bondState = $bondstate")
 
-            val existingDevice = _connectedDevices.value.find { it.macAddress == device.macAddress }
-            if (existingDevice == null) {
-                _connectedDevices.update { it + device }
-            } else {
-                _connectedDevices.update { devices ->
-                    devices.map {
-                        if (it.macAddress == device.macAddress) {
-                            it.bluetoothGatt = device.bluetoothGatt
-                            it
-                        } else it
-                    }
+            // Update or add device to both connectedDevices and allDevices lists
+            _connectedDevices.update { devices ->
+                val updatedDevices = devices.filter { it.macAddress != device.macAddress }
+                updatedDevices + device
+            }
+
+            _allDevices.update { devices ->
+                val updatedDevices = devices.map {
+                    if (it.macAddress == device.macAddress) {
+                        it.bluetoothGatt = device.bluetoothGatt
+                        it.setConnectionStatus(Device.ConnectionStatus.CONNECTED)
+                        it
+                    } else it
+                }
+                if (!updatedDevices.any { it.macAddress == device.macAddress }) {
+                    updatedDevices + device
+                } else {
+                    updatedDevices
                 }
             }
 
-            Log.d("DBG", "Device connected and added to list. Current size: ${_connectedDevices.value.size}")
+            Log.d("DBG", "Device connected and added/updated in both lists. Connected devices: ${_connectedDevices.value.size}, All devices: ${_allDevices.value.size}")
 
             withContext(Dispatchers.Main) {
                 device.bluetoothGatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
@@ -643,6 +671,8 @@ object BleManager : Application() {
 
     /**
      * Handles device disconnection
+     * @param prevConnectState The previous connection state
+     * @param device The device that has been disconnected
      */
     private fun disconnected(prevConnectState: ConnState, device: Device) {
         scope.launch {
@@ -652,26 +682,50 @@ object BleManager : Application() {
 
             device.setConnectionStatus(Device.ConnectionStatus.DISCONNECTED)
 
+            // Remove device from connectedDevices list
             _connectedDevices.update { it.filter { d -> d.macAddress != device.macAddress } }
+
+            // Update the device's connection status in the allDevices list
+            _allDevices.update { devices ->
+                devices.map {
+                    if (it.macAddress == device.macAddress) {
+                        it.setConnectionStatus(Device.ConnectionStatus.DISCONNECTED)
+                        it
+                    } else it
+                }
+            }
+
+            Log.d("DBG", "Device disconnected. Connected devices: ${_connectedDevices.value.size}, All devices: ${_allDevices.value.size}")
         }
     }
 
     /**
      * Completes the disconnection process for a device
+     * @param device The device to complete disconnection... for
      */
     @SuppressLint("MissingPermission")
     private fun completeDisconnect(device: Device) {
         scope.launch {
             Log.d("DBG", "    Entered completeDisconnect")
             device.bluetoothGatt.close()
-            _connectedDevices.update { it.filter { d -> d.macAddress != device.macAddress } }
+            device.setConnectionStatus(Device.ConnectionStatus.DISCONNECTED)
+
+            // Update the device's connection status in the list of all devices
+            _allDevices.update { devices ->
+                devices.map {
+                    if (it.macAddress == device.macAddress) {
+                        it.setConnectionStatus(Device.ConnectionStatus.DISCONNECTED)
+                        it
+                    } else it
+                }
+            }
             appConnState = "DISCONNECTED"
             Log.d("DBG", "    Exited completeDisconnect")
         }
     }
 
     /**
-     * Disconnects all connected BLE devices
+     * Disconnects all BLE devices
      */
     @SuppressLint("MissingPermission")
     fun disconnectBle() {
@@ -679,7 +733,23 @@ object BleManager : Application() {
             _connectedDevices.value.forEach { device ->
                 appConnState = "DISCONNECTING"
                 device.bluetoothGatt.disconnect()
+                device.setConnectionStatus(Device.ConnectionStatus.DISCONNECTED)
             }
+
+            // Update the connection status in allDevices list
+            _allDevices.update { devices ->
+                devices.map { device ->
+                    if (_connectedDevices.value.any { it.macAddress == device.macAddress }) {
+                        device.setConnectionStatus(Device.ConnectionStatus.DISCONNECTED)
+                    }
+                    device
+                }
+            }
+
+            // Clear the connectedDevices list
+            _connectedDevices.update { emptyList() }
+
+            Log.d("DBG", "All devices disconnected. Connected devices: ${_connectedDevices.value.size}, All devices: ${_allDevices.value.size}")
         }
     }
 

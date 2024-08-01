@@ -31,7 +31,7 @@ class MultiGraphFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         viewLifecycleOwner.lifecycleScope.launch {
-            BleManager.connectedDevices.collectLatest { devices ->
+            BleManager.allDevices.collectLatest { devices ->
                 updateDeviceViews(devices)
             }
         }
