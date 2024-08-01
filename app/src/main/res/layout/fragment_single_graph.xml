@@ -64,7 +64,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:text="Export Flash Data"
+                android:text="Export Flash"
                 android:fontFamily="monospace" />
 
             <Button
@@ -72,16 +72,15 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:text="Clear Flash Data"
+                android:text="Clear Flash"
                 android:fontFamily="monospace" />
 
             <Button
-                android:id="@+id/btn_test"
+                android:id="@+id/btn_remove_device"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="16dp"
-                android:visibility="gone"
-                android:text="Test"
+                android:text="Disconnect"
                 android:fontFamily="monospace" />
 
             <TextView

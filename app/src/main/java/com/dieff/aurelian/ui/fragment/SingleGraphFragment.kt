@@ -81,15 +81,10 @@ class SingleGraphFragment : Fragment() {
                     setupUI()
                     observeDeviceChanges()
                     setupClickListeners()
-                } ?: run {
-                    // Handle case where currentDevice is null
-                    Log.e("SingleGraphFragment", "Device is null")
-                    findNavController().popBackStack()
                 }
             } catch (e: IllegalArgumentException) {
                 // Handle the case where the device is not found
                 Log.e("SingleGraphFragment", "Device not found", e)
-                // You might want to show an error message to the user and navigate back
                 findNavController().popBackStack()
             }
         }
@@ -199,7 +194,7 @@ class SingleGraphFragment : Fragment() {
 
         binding.btnExport.setOnClickListener {
             checkStreamingAndExecute {
-                showConfirmationDialog("Export Flash Data", "Are you ready to export the flash data from the device to the app?") {
+                showConfirmationDialog("Export Flash", "Are you ready to export the flash data from the device to the app?") {
                     singleGraphViewModel.exportFlashData()
                 }
             }
@@ -213,15 +208,28 @@ class SingleGraphFragment : Fragment() {
             }
         }
 
-        binding.btnTest.setOnClickListener {
-            currentDevice.let { device ->
-                device.setTotalPackets(device.totalPackets.value + 10)
-                device.setCurrentPacketv2(device.currentPacketv2.value + 1)
-                Log.d("DBG", "TEST Button Test: device.totalPackets + device.currentPacket + device.progressPercent = " +
-                        "${device.totalPackets.value}; ${device.currentPacketv2.value}; ${device.progressPercent}")
-            }
+        binding.btnRemoveDevice.setOnClickListener {
+            showRemoveDeviceConfirmationDialog()
         }
+    }
 
+    private fun showRemoveDeviceConfirmationDialog() {
+        AlertDialog.Builder(requireContext())
+            .setTitle("Disconnect Device")
+            .setMessage("Are you sure you want to disconnect from ${currentDevice.name}?")
+            .setPositiveButton("Disconnect") { _, _ ->
+                removeDevice()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun removeDevice() {
+        currentDevice.let { device ->
+            BleManager.removeDevice(device)
+            // Navigate back to the MultiGraphFragment
+            //findNavController().popBackStack()
+        }
     }
 
     private fun updateSamplingButtonText(isStreaming: Boolean) {
@@ -289,7 +297,6 @@ class SingleGraphFragment : Fragment() {
             }
         }
     }
-
 
     private fun hideProgressInfo() {
         progressBar.visibility = View.GONE
