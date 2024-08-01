@@ -340,7 +340,7 @@ class HomeFragment : Fragment(), DeviceChangeListener {
     private fun connectToSelectedDevices(selectedPositions: List<Int>) {
 
         //TODO I will improve this to not use delay.
-        val delayTime: Long = 3300
+        val delayTime: Long = 4000
 
         viewLifecycleOwner.lifecycleScope.launch {
             selectedPositions.forEachIndexed { index, position ->
