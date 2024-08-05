@@ -273,7 +273,9 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         }
 
         binding.messagesButton.setOnClickListener {
-            //TODO FIX_ME replace with a button that moves to the multigraph view
+            val action = HomeFragmentDirections.actionHomeFragmentToMultiGraphFragment()
+            findNavController().navigate(action)
+            hasNavigatedToMultiGraph = true
         }
 
         Log.d("DBG", "HomeFragment - Exited onViewCreated")

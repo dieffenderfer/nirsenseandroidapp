@@ -58,6 +58,15 @@ class SingleGraphFragment : Fragment() {
     private var _binding: FragmentSingleGraphBinding? = null
     private val binding get() = _binding!!
 
+    private var isEmbedded = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        arguments?.let {
+            isEmbedded = it.getBoolean(ARG_IS_EMBEDDED, false)
+        }
+    }
+
     private lateinit var lineChart: LineChart
     private lateinit var lineChart2: LineChart
     private lateinit var readoutBox1Middle: TextView
@@ -81,6 +90,7 @@ class SingleGraphFragment : Fragment() {
                     setupUI()
                     observeDeviceChanges()
                     setupClickListeners()
+
                 }
             } catch (e: IllegalArgumentException) {
                 // Handle the case where the device is not found
@@ -91,6 +101,11 @@ class SingleGraphFragment : Fragment() {
     }
 
     private fun setupUI() {
+
+        if (isEmbedded) {
+            hideControlButtons()
+        }
+
         // Set the app version text at the bottom
         val versionText = "NIRSense ${AppConfig.appName} Android App v${AppConfig.appVersion}"
         binding.versionTextView.text = versionText
@@ -224,10 +239,35 @@ class SingleGraphFragment : Fragment() {
             .show()
     }
 
+    private fun hideControlButtons() {
+        binding.btnCaptureBounds.visibility = View.GONE
+        binding.btnCaptureBounds2.visibility = View.GONE
+        binding.btnResetAutoscale.visibility = View.GONE
+        binding.btnResetAutoscale2.visibility = View.GONE
+        binding.btnSampling.visibility = View.GONE
+        binding.btnExport.visibility = View.GONE
+        binding.btnClear.visibility = View.GONE
+        binding.btnRemoveDevice.visibility = View.GONE
+    }
+
+    companion object {
+        private const val ARG_IS_EMBEDDED = "is_embedded"
+
+        fun newInstance(deviceId: String, isEmbedded: Boolean): SingleGraphFragment {
+            return SingleGraphFragment().apply {
+                arguments = Bundle().apply {
+                    putString("deviceId", deviceId)
+                    putBoolean(ARG_IS_EMBEDDED, isEmbedded)
+                }
+            }
+        }
+    }
+
+
     private fun removeDevice() {
         currentDevice.let { device ->
             BleManager.removeDevice(device)
-            // Navigate back to the MultiGraphFragment
+            // Navigate back to the MultiGraphFragment //TODO FIX_ME if it's NON-embedded do this
             //findNavController().popBackStack()
         }
     }

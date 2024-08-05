@@ -171,7 +171,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="EEG 1"
+                android:text="Not EEG 1"
                 android:textSize="14sp"
                 android:layout_marginLeft="8dp"
                 android:layout_gravity="center_vertical" />
@@ -225,7 +225,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="EEG 2"
+                android:text="Not EEG 2"
                 android:textSize="14sp"
                 android:layout_marginLeft="8dp"
                 android:layout_gravity="center_vertical" />
