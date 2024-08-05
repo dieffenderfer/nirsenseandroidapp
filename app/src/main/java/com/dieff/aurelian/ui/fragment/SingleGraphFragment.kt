@@ -244,10 +244,10 @@ class SingleGraphFragment : Fragment() {
         binding.btnCaptureBounds2.visibility = View.GONE
         binding.btnResetAutoscale.visibility = View.GONE
         binding.btnResetAutoscale2.visibility = View.GONE
-        binding.btnSampling.visibility = View.GONE
+        //binding.btnSampling.visibility = View.GONE
         binding.btnExport.visibility = View.GONE
         binding.btnClear.visibility = View.GONE
-        binding.btnRemoveDevice.visibility = View.GONE
+        //binding.btnRemoveDevice.visibility = View.GONE
     }
 
     companion object {
@@ -267,8 +267,12 @@ class SingleGraphFragment : Fragment() {
     private fun removeDevice() {
         currentDevice.let { device ->
             BleManager.removeDevice(device)
-            // Navigate back to the MultiGraphFragment //TODO FIX_ME if it's NON-embedded do this
-            //findNavController().popBackStack()
+
+            //Navigate back to the multi-device fragment (if this is not an embedded single graph fragment)
+            if (isEmbedded == false) {
+                findNavController().popBackStack()
+            }
+
         }
     }
 

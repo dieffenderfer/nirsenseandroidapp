@@ -273,9 +273,17 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         }
 
         binding.messagesButton.setOnClickListener {
-            val action = HomeFragmentDirections.actionHomeFragmentToMultiGraphFragment()
-            findNavController().navigate(action)
-            hasNavigatedToMultiGraph = true
+            // Get the current value of allDevices
+            val devices = BleManager.allDevices.value
+
+            if (devices.isEmpty()) {
+                // Show Toast message that says please connect to a device
+                Toast.makeText(context, "Please connect to at least one device.", Toast.LENGTH_SHORT).show()
+            } else {
+                val action = HomeFragmentDirections.actionHomeFragmentToMultiGraphFragment()
+                findNavController().navigate(action)
+                hasNavigatedToMultiGraph = true
+            }
         }
 
         Log.d("DBG", "HomeFragment - Exited onViewCreated")
