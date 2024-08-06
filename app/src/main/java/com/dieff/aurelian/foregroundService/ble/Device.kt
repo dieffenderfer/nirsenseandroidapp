@@ -244,13 +244,21 @@ class Device(
         val totalProcessedPackets: Int
             get() = _totalProcessedPackets.get()
 
-        // MutableSharedFlow for emitting graphing data with a buffer to handle backpressure
-        private val _graphingDataFlow = MutableSharedFlow<Array<Packet>>(
+        // MutableSharedFlow for emitting preview data with a buffer to handle backpressure
+        private val _previewDataFlow = MutableSharedFlow<Array<Packet>>(
             replay = 1,
             extraBufferCapacity = 100,
             onBufferOverflow = BufferOverflow.DROP_OLDEST
         )
-        val graphingDataFlow = _graphingDataFlow.asSharedFlow()
+        val previewDataFlow = _previewDataFlow.asSharedFlow()
+
+        // MutableSharedFlow for emitting stored data with a buffer to handle backpressure
+        private val _storedDataFlow = MutableSharedFlow<Array<Packet>>(
+            replay = 1,
+            extraBufferCapacity = 100,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        )
+        val storedDataFlow = _storedDataFlow.asSharedFlow()
 
         // Use a lock for thread-safe CSV writing
         private val csvLock = ReentrantLock()
@@ -259,37 +267,61 @@ class Device(
         private val csvLineBuilder = StringBuilder(256)
 
         /**
-         * Aggregates and processes incoming packets.
+         * Aggregates and processes incoming preview packets.
          *
-         * @param packets List of packets to process
+         * @param packets List of preview packets to process
          */
-        fun aggregateData(packets: List<Packet>) {
-            Log.d("DeviceDataAggregator", "Processing batch of ${packets.size} packets")
+        fun aggregatePreviewData(packets: List<Packet>) {
+            Log.d("DeviceDataAggregator", "Processing batch of ${packets.size} preview packets")
 
             // Limit batch size to prevent processing extremely large batches
             val processedCount = min(packets.size, MAX_BATCH_SIZE)
             if (processedCount < packets.size) {
-                Log.w("DeviceDataAggregator", "Batch size exceeded limit. Processing first $MAX_BATCH_SIZE packets.")
+                Log.w("DeviceDataAggregator", "Preview batch size exceeded limit. Processing first $MAX_BATCH_SIZE packets.")
             }
 
-            packets.take(processedCount).forEach { packet ->
-                processPacket(packet)
+            val processedPackets = packets.take(processedCount).map { packet ->
+                processPacket(packet, isPreview = true)
+            }.toTypedArray()
+
+            _previewDataFlow.tryEmit(processedPackets)
+            _totalProcessedPackets.addAndGet(processedCount)
+        }
+
+        /**
+         * Aggregates and processes incoming stored packets.
+         *
+         * @param packets List of stored packets to process
+         */
+        fun aggregateStoredData(packets: List<Packet>) {
+            Log.d("DeviceDataAggregator", "Processing batch of ${packets.size} stored packets")
+
+            // Limit batch size to prevent processing extremely large batches
+            val processedCount = min(packets.size, MAX_BATCH_SIZE)
+            if (processedCount < packets.size) {
+                Log.w("DeviceDataAggregator", "Stored batch size exceeded limit. Processing first $MAX_BATCH_SIZE packets.")
             }
 
+            val processedPackets = packets.take(processedCount).map { packet ->
+                processPacket(packet, isPreview = false)
+            }.toTypedArray()
+
+            _storedDataFlow.tryEmit(processedPackets)
             _totalProcessedPackets.addAndGet(processedCount)
         }
 
         /**
          * Processes a single packet, updating both graphing and saving buffers.
          */
-        private fun processPacket(packet: Packet) {
-            // Update graphing buffer
-            dbAggregateArrayGraphing[currentIndexGraphing] = packet
-            currentIndexGraphing++
+        private fun processPacket(packet: Packet, isPreview: Boolean): Packet {
+            if (isPreview) {
+                // Update graphing buffer
+                dbAggregateArrayGraphing[currentIndexGraphing] = packet
+                currentIndexGraphing++
 
-            if (currentIndexGraphing == ARRAY_SIZE_GRAPHING) {
-                emitGraphingData()
-                currentIndexGraphing = 0
+                if (currentIndexGraphing == ARRAY_SIZE_GRAPHING) {
+                    currentIndexGraphing = 0
+                }
             }
 
             // Update saving buffer
@@ -300,19 +332,8 @@ class Device(
                 saveToCSV(dbAggregateArraySaving)
                 currentIndexSaving = 0
             }
-        }
 
-        /**
-         * Emits graphing data to the SharedFlow.
-         */
-        private fun emitGraphingData() {
-            try {
-                // Create a copy of the array to avoid mutation issues
-                val graphingData = dbAggregateArrayGraphing.copyOf() as Array<Packet>
-                _graphingDataFlow.tryEmit(graphingData)
-            } catch (e: Exception) {
-                Log.e("DeviceDataAggregator", "Failed to emit graphing data", e)
-            }
+            return packet
         }
 
         /**

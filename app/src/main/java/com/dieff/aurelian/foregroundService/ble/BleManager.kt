@@ -315,7 +315,7 @@ object BleManager : Application() {
                                 Log.d("DBG", "Received data from STORAGE characteristic")
                                 val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
                                 device?.let {
-                                    var chunkSize = if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) 120 else 80
+                                    var chunkSize = if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) 120 else 80 //TODO FIX_ME Refactor this to handle different device types better. Could be something like Device.chunksize that gets set on onboarding
                                     var offset = 0
                                     while (offset < value.size) {
                                         val end = minOf(offset + chunkSize, value.size)

@@ -285,7 +285,7 @@ class SingleGraphViewModel : ViewModel() {
         bufferMonitorJob = viewModelScope.launch {
             var pingNotPong = true
 
-            currentDevice?.dataAggregator?.graphingDataFlow?.collect { graphPackets ->
+            currentDevice?.dataAggregator?.previewDataFlow?.collect { graphPackets -> //To show stored data coming in, we could collect storedDataFlow
                 Log.d("DBG", "notHomeFragment I got the message on the channel... from the dataAggregator!")
 
                 // Digital readouts
@@ -295,8 +295,8 @@ class SingleGraphViewModel : ViewModel() {
                 for (graphPacket in graphPackets) {
                     //drifting graph / graph 2
                     val newEntry2 = when (graphPacket) {
-                        is ArgusPacket -> Entry(everIncreasingX.toFloat(), graphPacket.stO2.toFloat())
-                        is AurelianPacket -> Entry(everIncreasingX.toFloat(), graphPacket.eegC1.toFloat())
+                        is ArgusPacket -> Entry(everIncreasingX, graphPacket.stO2.toFloat())
+                        is AurelianPacket -> Entry(everIncreasingX, graphPacket.eegC1.toFloat())
                         else -> null
                     }
                     newEntry2?.let { lineChart2Dataset.addEntry(it) }

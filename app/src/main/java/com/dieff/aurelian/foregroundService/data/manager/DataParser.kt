@@ -38,7 +38,7 @@ object DataParser {
      */
     @SuppressLint("SuspiciousIndentation")
     @Synchronized
-    suspend fun processPreviewData(data: ByteArray, device: Device) {
+    fun processPreviewData(data: ByteArray, device: Device) {
         if (BuildConfig.DEBUG_BLE) {
             Log.d("DataParser", "Entered processPreviewData")
         }
@@ -60,7 +60,7 @@ object DataParser {
         when {
             packets.isEmpty() -> Log.d("DataParser", "No packets to process")
             packets.size <= MAX_PACKETS_PER_PROCESS -> {
-                device.dataAggregator.aggregateData(packets)
+                device.dataAggregator.aggregatePreviewData(packets)
                 Log.d("DataParser", "Aggregated ${packets.size} preview data packets")
             }
             else -> Log.w("DataParser", "Packet count exceeds limit. Skipping ${packets.size} packets.")
@@ -388,13 +388,11 @@ object DataParser {
     /**
      * Processes a single history packet data.
      */
-    private suspend fun processHistoryPacketData(historyPacketData: Packet, device: Device) {
+    private fun processHistoryPacketData(historyPacketData: Packet, device: Device) {
         val captureTime = setCaptureTimeStoredData(historyPacketData, device)
         historyPacketData.captureTime = captureTime
 
-        val captureTimeString = DATE_TIME_FORMATTER.format(captureTime)
-
-        device.dataAggregator.aggregateData(listOf(historyPacketData))
+        device.dataAggregator.aggregateStoredData(listOf(historyPacketData))
 
         device.historyIndex++
         device.setCurrentPacketv2(device.currentPacketv2.value + 1)
