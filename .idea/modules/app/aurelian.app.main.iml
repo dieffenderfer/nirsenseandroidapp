@@ -67,6 +67,7 @@
       <sourceFolder url="file://$MODULE_DIR$/../../../app/build/generated/source/kaptKotlin/release" isTestSource="false" generated="true" />
     </content>
     <content url="file://$MODULE_DIR$/../../../app/src/main">
+      <sourceFolder url="file://$MODULE_DIR$/../../../app/src/main/assets" type="java-resource" />
       <sourceFolder url="file://$MODULE_DIR$/../../../app/src/main/java" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/../../../app/src/main/res" type="java-resource" />
     </content>

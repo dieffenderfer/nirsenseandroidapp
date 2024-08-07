@@ -359,7 +359,6 @@ class HomeFragment : Fragment(), DeviceChangeListener {
             selectedPositions.forEachIndexed { index, position ->
                 if (index > 0) {
                     delay(delayTime + (index*1000))
-
                 }
                 sharedViewModel.connectBle(position)
             }
@@ -369,8 +368,13 @@ class HomeFragment : Fragment(), DeviceChangeListener {
                     if (devices.isNotEmpty() && !hasNavigatedToMultiGraph) {
                         delay(delayTime * selectedPositions.size) //TODO improve this to not use delay.
                         stopLoadingAnimation()
-                        val action = HomeFragmentDirections.actionHomeFragmentToMultiGraphFragment()
-                        findNavController().navigate(action)
+
+                         val action = HomeFragmentDirections.actionHomeFragmentToMultiGraphFragment()
+                         findNavController().navigate(action)
+
+                        // New navigation to OnboardingFragment //TODO
+//                        val action = HomeFragmentDirections.actionHomeFragmentToOnboardingFragment()
+//                        findNavController().navigate(action)
                         hasNavigatedToMultiGraph = true
                         return@collect
                     }
@@ -645,6 +649,16 @@ class HomeFragment : Fragment(), DeviceChangeListener {
     }
 
     private fun showLoadingAnimation() {
+        // Set the desired width and height (80% of current size)
+        val newWidth = (loadingAnimation.layoutParams.width * 0.8).toInt()
+        val newHeight = (loadingAnimation.layoutParams.height * 0.8).toInt()
+
+        // Apply new width and height to the ImageView
+        val params = loadingAnimation.layoutParams
+        params.width = newWidth
+        params.height = newHeight
+        loadingAnimation.layoutParams = params
+
         val requestOptions = RequestOptions().transform(AlphaTransformation(0.1f))
 
         Glide.with(this)

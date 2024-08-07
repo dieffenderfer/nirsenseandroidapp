@@ -42,7 +42,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:text="Please connect to a device.\n\nTap the Bluetooth Setup button to proceed."
-        android:textSize="22sp"
+        android:textSize="20sp"
         android:textColor="@color/secondary_text_color"
         android:gravity="center"
         app:layout_constraintTop_toBottomOf="@id/title_textView"
