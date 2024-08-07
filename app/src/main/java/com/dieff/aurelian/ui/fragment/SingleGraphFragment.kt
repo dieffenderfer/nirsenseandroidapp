@@ -1,11 +1,5 @@
 package com.dieff.aurelian.ui.fragment
 
-
-import androidx.fragment.app.viewModels
-import androidx.lifecycle.lifecycleScope
-import androidx.navigation.fragment.findNavController
-import androidx.navigation.fragment.navArgs
-import kotlinx.coroutines.launch
 import android.annotation.SuppressLint
 import android.app.AlertDialog
 import android.graphics.Color
@@ -23,32 +17,23 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ProgressBar
-import android.widget.SeekBar
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.fragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.dieff.aurelian.AppConfig
-import com.dieff.aurelian.AppConfig.appName
-import com.dieff.aurelian.AppConfig.appVersion
-import com.dieff.aurelian.ui.viewmodel.SingleGraphViewModel
-import com.github.mikephil.charting.charts.LineChart
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.collectLatest
 import com.dieff.aurelian.databinding.FragmentSingleGraphBinding
 import com.dieff.aurelian.foregroundService.ble.BleManager
 import com.dieff.aurelian.foregroundService.ble.Device
-import kotlinx.coroutines.delay
+import com.dieff.aurelian.ui.viewmodel.SingleGraphViewModel
+import com.github.mikephil.charting.charts.LineChart
+import kotlinx.coroutines.launch
 
 class SingleGraphFragment : Fragment() {
-
-    private lateinit var progressBar: ProgressBar
-    private lateinit var progressText: TextView
-
-    private lateinit var dismissButton: Button
 
     private val args: SingleGraphFragmentArgs by navArgs()
     private lateinit var currentDevice: Device
@@ -60,19 +45,26 @@ class SingleGraphFragment : Fragment() {
 
     private var isEmbedded = false
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        arguments?.let {
-            isEmbedded = it.getBoolean(ARG_IS_EMBEDDED, false)
-        }
-    }
-
     private lateinit var lineChart: LineChart
     private lateinit var lineChart2: LineChart
     private lateinit var readoutBox1Middle: TextView
     private lateinit var readoutBox2Middle: TextView
     private lateinit var readoutBox3Middle: TextView
     private lateinit var readoutBox4Middle: TextView
+
+    private lateinit var progressBar: ProgressBar
+    private lateinit var progressText: TextView
+    private lateinit var dismissButton: Button
+
+
+
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        arguments?.let {
+            isEmbedded = it.getBoolean(ARG_IS_EMBEDDED, false)
+        }
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentSingleGraphBinding.inflate(inflater, container, false)
@@ -90,10 +82,8 @@ class SingleGraphFragment : Fragment() {
                     setupUI()
                     observeDeviceChanges()
                     setupClickListeners()
-
                 }
             } catch (e: IllegalArgumentException) {
-                // Handle the case where the device is not found
                 Log.e("SingleGraphFragment", "Device not found", e)
                 findNavController().popBackStack()
             }
@@ -101,44 +91,45 @@ class SingleGraphFragment : Fragment() {
     }
 
     private fun setupUI() {
-
         if (isEmbedded) {
             hideControlButtons()
         }
 
-        // Set the app version text at the bottom
-        val versionText = "NIRSense ${AppConfig.appName} Android App v${AppConfig.appVersion}"
-        binding.versionTextView.text = versionText
+        binding.apply {
+            val versionText = "NIRSense ${AppConfig.appName} Android App v${AppConfig.appVersion}"
+            versionTextView.text = versionText
 
-        lineChart = binding.lineChart
-        lineChart2 = binding.lineChart2
-        readoutBox1Middle = binding.readoutBox1Middle
-        readoutBox2Middle = binding.readoutBox2Middle
-        readoutBox3Middle = binding.readoutBox3Middle
-        readoutBox4Middle = binding.readoutBox4Middle
+            // Initialize chart and readout references
+            this@SingleGraphFragment.lineChart = binding.lineChart
+            this@SingleGraphFragment.lineChart2 = binding.lineChart2
+            this@SingleGraphFragment.readoutBox1Middle = binding.readoutBox1Middle
+            this@SingleGraphFragment.readoutBox2Middle = binding.readoutBox2Middle
+            this@SingleGraphFragment.readoutBox3Middle = binding.readoutBox3Middle
+            this@SingleGraphFragment.readoutBox4Middle = binding.readoutBox4Middle
 
-        progressBar = binding.progressBar
-        progressText = binding.progressText
+            // Initialize progress-related views
+            this@SingleGraphFragment.progressBar = binding.progressBar
+            this@SingleGraphFragment.progressText = binding.progressText
+            dismissButton = binding.btnDismiss
 
-        progressBar.progress = 0
-        progressBar.max = 100
+            progressBar.progress = 0
+            progressBar.max = 100
 
-        dismissButton = binding.btnDismiss
+            dismissButton.visibility = View.GONE
+            dismissButton.setOnClickListener {
+                hideProgressInfo()
+            }
 
-        dismissButton.visibility = View.GONE
-        dismissButton.setOnClickListener {
-            hideProgressInfo()
+            // Update readout labels and units
+            readoutBox1Top.text = singleGraphViewModel.readoutConfigs[0].label
+            readoutBox1Bottom.text = singleGraphViewModel.readoutConfigs[0].unit
+            readoutBox2Top.text = singleGraphViewModel.readoutConfigs[1].label
+            readoutBox2Bottom.text = singleGraphViewModel.readoutConfigs[1].unit
+            readoutBox3Top.text = singleGraphViewModel.readoutConfigs[2].label
+            readoutBox3Bottom.text = singleGraphViewModel.readoutConfigs[2].unit
+            readoutBox4Top.text = singleGraphViewModel.readoutConfigs[3].label
+            readoutBox4Bottom.text = singleGraphViewModel.readoutConfigs[3].unit
         }
-
-        // Update readout labels and units
-        binding.readoutBox1Top.text = singleGraphViewModel.readoutConfigs[0].label
-        binding.readoutBox1Bottom.text = singleGraphViewModel.readoutConfigs[0].unit
-        binding.readoutBox2Top.text = singleGraphViewModel.readoutConfigs[1].label
-        binding.readoutBox2Bottom.text = singleGraphViewModel.readoutConfigs[1].unit
-        binding.readoutBox3Top.text = singleGraphViewModel.readoutConfigs[2].label
-        binding.readoutBox3Bottom.text = singleGraphViewModel.readoutConfigs[2].unit
-        binding.readoutBox4Top.text = singleGraphViewModel.readoutConfigs[3].label
-        binding.readoutBox4Bottom.text = singleGraphViewModel.readoutConfigs[3].unit
 
         singleGraphViewModel.setupLineChartDebug(lineChart, lineChart2)
         singleGraphViewModel.receivePacketArrayFromDataAggregator(lineChart, lineChart2, readoutBox1Middle, readoutBox2Middle, readoutBox3Middle, readoutBox4Middle)
@@ -149,34 +140,32 @@ class SingleGraphFragment : Fragment() {
 
     private fun observeDeviceChanges() {
         viewLifecycleOwner.lifecycleScope.launch {
-            currentDevice.let { device ->
+            viewLifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch {
-                    device.isStreaming.collectLatest { isStreaming ->
+                    currentDevice.isStreaming.collect { isStreaming ->
                         updateSamplingButtonText(isStreaming)
                     }
                 }
                 launch {
-                    device.totalPackets.collectLatest { _ ->
+                    currentDevice.totalPackets.collect { _ ->
                         updateProgressBar()
                     }
                 }
                 launch {
-                    device.currentPacketv2.collectLatest { _ ->
+                    currentDevice.currentPacketv2.collect { _ ->
                         updateProgressBar()
                     }
                 }
                 launch {
-                    device.connectionStatus.collectLatest { connectionStatus ->
+                    currentDevice.connectionStatus.collect { connectionStatus ->
                         updateStatusText(connectionStatus)
                     }
                 }
                 launch {
-                    device.isDownloadComplete.collectLatest { isComplete ->
+                    currentDevice.isDownloadComplete.collect { isComplete ->
                         if (isComplete) {
-                            delay(100)
-                            onDownloadComplete(device)
-                            // Reset the flag after handling
-                            device.setDownloadComplete(false)
+                            onDownloadComplete(currentDevice)
+                            currentDevice.setDownloadComplete(false)
                         }
                     }
                 }
@@ -185,46 +174,48 @@ class SingleGraphFragment : Fragment() {
     }
 
     private fun setupClickListeners() {
-        binding.btnCaptureBounds.setOnClickListener {
-            singleGraphViewModel.captureYBounds(lineChart)
-        }
-
-        binding.btnCaptureBounds2.setOnClickListener {
-            singleGraphViewModel.captureYBounds(lineChart2)
-        }
-
-        binding.btnResetAutoscale.setOnClickListener {
-            singleGraphViewModel.resetAutoscale(lineChart)
-        }
-
-        binding.btnResetAutoscale2.setOnClickListener {
-            singleGraphViewModel.resetAutoscale(lineChart2)
-        }
-
-        binding.btnSampling.setOnClickListener {
-            checkStreamingAndExecute {
-                singleGraphViewModel.toggleSampling()
+        binding.apply {
+            btnCaptureBounds.setOnClickListener {
+                singleGraphViewModel.captureYBounds(lineChart)
             }
-        }
 
-        binding.btnExport.setOnClickListener {
-            checkStreamingAndExecute {
-                showConfirmationDialog("Export Flash", "Are you ready to export the flash data from the device to the app?") {
-                    singleGraphViewModel.exportFlashData()
+            btnCaptureBounds2.setOnClickListener {
+                singleGraphViewModel.captureYBounds(lineChart2)
+            }
+
+            btnResetAutoscale.setOnClickListener {
+                singleGraphViewModel.resetAutoscale(lineChart)
+            }
+
+            btnResetAutoscale2.setOnClickListener {
+                singleGraphViewModel.resetAutoscale(lineChart2)
+            }
+
+            btnSampling.setOnClickListener {
+                checkStreamingAndExecute {
+                    singleGraphViewModel.toggleSampling()
                 }
             }
-        }
 
-        binding.btnClear.setOnClickListener {
-            checkStreamingAndExecute {
-                showConfirmationDialog("Clear Flash", "Are you sure you want to clear the flash data on the device?\n\nThis action cannot be undone.") {
-                    singleGraphViewModel.clearFlash()
+            btnExport.setOnClickListener {
+                checkStreamingAndExecute {
+                    showConfirmationDialog("Export Flash", "Are you ready to export the flash data from the device to the app?") {
+                        singleGraphViewModel.exportFlashData()
+                    }
                 }
             }
-        }
 
-        binding.btnRemoveDevice.setOnClickListener {
-            showRemoveDeviceConfirmationDialog()
+            btnClear.setOnClickListener {
+                checkStreamingAndExecute {
+                    showConfirmationDialog("Clear Flash", "Are you sure you want to clear the flash data on the device?\n\nThis action cannot be undone.") {
+                        singleGraphViewModel.clearFlash()
+                    }
+                }
+            }
+
+            btnRemoveDevice.setOnClickListener {
+                showRemoveDeviceConfirmationDialog()
+            }
         }
     }
 
@@ -240,49 +231,31 @@ class SingleGraphFragment : Fragment() {
     }
 
     private fun hideControlButtons() {
-        binding.btnCaptureBounds.visibility = View.GONE
-        binding.btnCaptureBounds2.visibility = View.GONE
-        binding.btnResetAutoscale.visibility = View.GONE
-        binding.btnResetAutoscale2.visibility = View.GONE
-        //binding.btnSampling.visibility = View.GONE
-        binding.btnExport.visibility = View.GONE
-        binding.btnClear.visibility = View.GONE
-        //binding.btnRemoveDevice.visibility = View.GONE
-    }
-
-    companion object {
-        private const val ARG_IS_EMBEDDED = "is_embedded"
-
-        fun newInstance(deviceId: String, isEmbedded: Boolean): SingleGraphFragment {
-            return SingleGraphFragment().apply {
-                arguments = Bundle().apply {
-                    putString("deviceId", deviceId)
-                    putBoolean(ARG_IS_EMBEDDED, isEmbedded)
-                }
-            }
+        binding.apply {
+            btnCaptureBounds.visibility = View.GONE
+            btnCaptureBounds2.visibility = View.GONE
+            btnResetAutoscale.visibility = View.GONE
+            btnResetAutoscale2.visibility = View.GONE
+            btnExport.visibility = View.GONE
+            btnClear.visibility = View.GONE
         }
     }
-
 
     private fun removeDevice() {
         currentDevice.let { device ->
             BleManager.removeDevice(device)
-
-            //Navigate back to the multi-device fragment (if this is not an embedded single graph fragment)
-            if (isEmbedded == false) {
+            if (!isEmbedded) {
                 findNavController().popBackStack()
             }
-
         }
     }
 
     private fun updateSamplingButtonText(isStreaming: Boolean) {
-        binding.btnSampling.text = if (isStreaming) "Stop Sampling" else "Start Sampling"
+        _binding?.btnSampling?.text = if (isStreaming) "Stop Sampling" else "Start Sampling"
     }
 
     private fun updateStatusText(connectionStatus: Device.ConnectionStatus) {
-        val deviceName = currentDevice?.name ?: "Unknown Device"
-
+        val deviceName = currentDevice.name ?: "Unknown Device"
         val statusText = when (connectionStatus) {
             Device.ConnectionStatus.CONNECTED -> "Connected"
             Device.ConnectionStatus.CONNECTING -> "Connecting..."
@@ -306,33 +279,32 @@ class SingleGraphFragment : Fragment() {
             Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
         )
 
-        binding.txtTopTitle.text = spannableString
+        _binding?.txtTopTitle?.text = spannableString
     }
 
     @SuppressLint("SetTextI18n")
     private fun updateProgressBar() {
-        currentDevice.let { device ->
-            Handler(Looper.getMainLooper()).post {
-                if (device.totalPackets.value > 0) {
+        Handler(Looper.getMainLooper()).post {
+            _binding?.apply {
+                if (currentDevice.totalPackets.value > 0) {
                     progressBar.visibility = View.VISIBLE
                     progressText.visibility = View.VISIBLE
 
                     progressBar.alpha = 1.0F
                     progressText.alpha = 1.0F
 
-                    val progressPercent = if (device.totalPackets.value > 0)
-                        (device.currentPacketv2.value * 100) / device.totalPackets.value
+                    val progressPercent = if (currentDevice.totalPackets.value > 0)
+                        (currentDevice.currentPacketv2.value * 100) / currentDevice.totalPackets.value
                     else 0
 
                     progressBar.progress = progressPercent
                     Log.d("DBG", "progressPercent = $progressPercent")
 
-                    if (device.currentPacketv2.value >= device.totalPackets.value) {
-                        // Transfer is complete
-                        progressText.text = "Transfer is complete!\n\n${device.currentPacketv2.value} / ${device.totalPackets.value} ✅\n\nThe data is located at Documents/NIRSense/${device.historyFilename}.csv"
+                    if (currentDevice.currentPacketv2.value >= currentDevice.totalPackets.value) {
+                        progressText.text = "Transfer is complete!\n\n${currentDevice.currentPacketv2.value} / ${currentDevice.totalPackets.value} ✅\n\nThe data is located at Documents/NIRSense/${currentDevice.historyFilename}.csv"
                         dismissButton.visibility = View.VISIBLE
                     } else {
-                        progressText.text = "Stored data transfer is ${progressPercent}% complete.\n\n${device.currentPacketv2.value} / ${device.totalPackets.value}\n\nSaving data to Documents/NIRSense/${device.historyFilename}.csv"
+                        progressText.text = "Stored data transfer is ${progressPercent}% complete.\n\n${currentDevice.currentPacketv2.value} / ${currentDevice.totalPackets.value}\n\nSaving data to Documents/NIRSense/${currentDevice.historyFilename}.csv"
                         dismissButton.visibility = View.GONE
                     }
                 } else {
@@ -343,17 +315,19 @@ class SingleGraphFragment : Fragment() {
     }
 
     private fun hideProgressInfo() {
-        progressBar.visibility = View.GONE
-        progressText.visibility = View.GONE
-        dismissButton.visibility = View.GONE
+        _binding?.apply {
+            progressBar.visibility = View.GONE
+            progressText.visibility = View.GONE
+            dismissButton.visibility = View.GONE
+        }
     }
 
     private fun onDownloadComplete(device: Device) {
-        binding.progressText.text = "Transfer is complete!\n\n${device.currentPacketv2.value} / ${device.totalPackets.value} ✅\n\nThe data is located at Documents/NIRSense/${device.historyFilename}.csv"
+        _binding?.apply {
+            progressText.text = "Transfer is complete!\n\n${device.currentPacketv2.value} / ${device.totalPackets.value} ✅\n\nThe data is located at Documents/NIRSense/${device.historyFilename}.csv"
+            dismissButton.visibility = View.VISIBLE
+        }
 
-        dismissButton.visibility = View.VISIBLE
-
-        // Play a sound effect
         try {
             val defaultSoundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
             val mediaPlayer = MediaPlayer().apply {
@@ -369,12 +343,10 @@ class SingleGraphFragment : Fragment() {
     }
 
     private fun checkStreamingAndExecute(action: () -> Unit) {
-        currentDevice.let { device ->
-            if (device.isStreamingStoredData) {
-                showAlertPopup("Warning", "Action cannot be performed while streaming stored data.")
-            } else {
-                action()
-            }
+        if (currentDevice.isStreamingStoredData) {
+            showAlertPopup("Warning", "Action cannot be performed while streaming stored data.")
+        } else {
+            action()
         }
     }
 
@@ -399,5 +371,18 @@ class SingleGraphFragment : Fragment() {
         super.onDestroyView()
         singleGraphViewModel.cancelBufferMonitorJob()
         _binding = null
+    }
+
+    companion object {
+        private const val ARG_IS_EMBEDDED = "is_embedded"
+
+        fun newInstance(deviceId: String, isEmbedded: Boolean): SingleGraphFragment {
+            return SingleGraphFragment().apply {
+                arguments = Bundle().apply {
+                    putString("deviceId", deviceId)
+                    putBoolean(ARG_IS_EMBEDDED, isEmbedded)
+                }
+            }
+        }
     }
 }
