@@ -9,8 +9,6 @@
     android:background="@color/background_color"
     tools:context=".ui.fragment.HomeFragment">
 
-
-
     <ImageView
         android:id="@+id/nirsense_logo"
         android:layout_width="0dp"
@@ -52,11 +50,26 @@
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="16dp"/>
 
+    <ImageView
+        android:id="@+id/loading_animation"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:src="@drawable/loading_animation_placeholder"
+        android:contentDescription="Loading Animation"
+        android:scaleType="fitCenter"
+        app:layout_constraintTop_toBottomOf="@id/status_textView"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintWidth_percent="0.2"
+        app:layout_constraintDimensionRatio="H,1:1"
+        android:visibility="gone"
+        android:layout_marginTop="36dp"/>
+
     <androidx.cardview.widget.CardView
         android:id="@+id/messages_button"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        app:layout_constraintTop_toBottomOf="@id/status_textView"
+        app:layout_constraintTop_toBottomOf="@id/loading_animation"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         android:layout_marginTop="32dp"

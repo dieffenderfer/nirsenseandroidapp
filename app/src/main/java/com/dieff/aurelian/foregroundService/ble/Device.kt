@@ -285,7 +285,7 @@ class Device(
             }.toTypedArray()
 
             _previewDataFlow.tryEmit(processedPackets)
-            _totalProcessedPackets.addAndGet(processedCount)
+            //_totalProcessedPackets.addAndGet(processedCount)
         }
 
         /**

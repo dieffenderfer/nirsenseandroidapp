@@ -86,6 +86,7 @@ class HomeFragment : Fragment(), DeviceChangeListener {
     lateinit var scan_results_recycler_view: RecyclerView
     lateinit var textView_scanMsg: TextView
     private lateinit var connectButton: Button
+    private lateinit var loadingAnimation: ImageView
 
     // List to store scan results
     private var miniScanResults = mutableListOf<MiniScanResult>()
@@ -156,10 +157,12 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         sharedViewModel.setup()
         Log.d("DBG","HomeFragment - Exited onCreate")
     }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentHomeBinding.inflate(inflater, container, false)
 
         statusTextView = binding.statusTextView
+        loadingAnimation = binding.loadingAnimation
 
         // Initialize and add blur view
         blurView = BlurView(requireContext())
@@ -198,9 +201,9 @@ class HomeFragment : Fragment(), DeviceChangeListener {
 
     private fun checkConnectedDevices(devices: List<Device>) {
         if (devices.isNotEmpty()) {
-            //
+            // Handle connected devices
         } else {
-            //
+            // Handle no connected devices
         }
     }
 
@@ -239,12 +242,11 @@ class HomeFragment : Fragment(), DeviceChangeListener {
             if (selectedPositions.isNotEmpty()) {
                 scanPopupWindow.dismiss()
 
-
-                if (selectedPositions.size == 1){
+                if (selectedPositions.size == 1) {
                     statusTextView.text = "Connecting to the selected device, please wait..."
+                } else {
+                    statusTextView.text = "Connecting to the selected devices, please wait..."
                 }
-
-                statusTextView.text = "Connecting to the selected devices, please wait..."
                 connectToSelectedDevices(selectedPositions)
             } else {
                 Toast.makeText(requireContext(), "Please select at least one device", Toast.LENGTH_SHORT).show()
@@ -273,11 +275,9 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         }
 
         binding.messagesButton.setOnClickListener {
-            // Get the current value of allDevices
             val devices = BleManager.allDevices.value
 
             if (devices.isEmpty()) {
-                // Show Toast message that says please connect to a device
                 Toast.makeText(context, "Please connect to at least one device.", Toast.LENGTH_SHORT).show()
             } else {
                 val action = HomeFragmentDirections.actionHomeFragmentToMultiGraphFragment()
@@ -286,15 +286,16 @@ class HomeFragment : Fragment(), DeviceChangeListener {
             }
         }
 
-        Log.d("DBG", "HomeFragment - Exited onViewCreated")
-
         observeGlobalCurrentDevice()
 
         viewLifecycleOwner.lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onDestroy(owner: LifecycleOwner) {
                 cleanupObservers()
+                stopLoadingAnimation()
             }
         })
+
+        Log.d("DBG", "HomeFragment - Exited onViewCreated")
     }
 
     override fun onResume() {
@@ -307,8 +308,6 @@ class HomeFragment : Fragment(), DeviceChangeListener {
     override fun onPause() {
         super.onPause()
         Log.d("DBG", "HomeFragment - Entered onPause")
-        val logoImageView: ImageView = binding.nirsenseLogo
-        //Glide.with(this).clear(logoImageView)
         cleanupObservers()
     }
 
@@ -316,6 +315,7 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         super.onDestroyView()
         Log.d("DBG", "HomeFragment - Entered onDestroyView")
         cleanupObservers()
+        stopLoadingAnimation()
         _binding = null
     }
 
@@ -323,6 +323,7 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         super.onDestroy()
         Log.d("DBG", "HomeFragment - Entered onDestroy")
         cleanupObservers()
+        stopLoadingAnimation()
     }
 
     private fun cleanupObservers() {
@@ -348,14 +349,17 @@ class HomeFragment : Fragment(), DeviceChangeListener {
     }
 
     private fun connectToSelectedDevices(selectedPositions: List<Int>) {
+        showLoadingAnimation()
+        hideButtons()
 
-        //TODO I will improve this to not use delay.
+        //TODO improve this to not use delay.
         val delayTime: Long = 4000
 
         viewLifecycleOwner.lifecycleScope.launch {
             selectedPositions.forEachIndexed { index, position ->
                 if (index > 0) {
                     delay(delayTime + (index*1000))
+
                 }
                 sharedViewModel.connectBle(position)
             }
@@ -363,9 +367,8 @@ class HomeFragment : Fragment(), DeviceChangeListener {
             withTimeoutOrNull(900000) {
                 BleManager.connectedDevices.collect { devices ->
                     if (devices.isNotEmpty() && !hasNavigatedToMultiGraph) {
-
-                        delay(delayTime * selectedPositions.size)
-
+                        delay(delayTime * selectedPositions.size) //TODO improve this to not use delay.
+                        stopLoadingAnimation()
                         val action = HomeFragmentDirections.actionHomeFragmentToMultiGraphFragment()
                         findNavController().navigate(action)
                         hasNavigatedToMultiGraph = true
@@ -374,6 +377,9 @@ class HomeFragment : Fragment(), DeviceChangeListener {
                 }
             }
 
+            // If the timeout is reached without navigating
+            stopLoadingAnimation()
+            showButtons()
         }
     }
 
@@ -385,15 +391,6 @@ class HomeFragment : Fragment(), DeviceChangeListener {
             AppID.ARGUS_APP -> logoImageView.setImageResource(R.drawable.argus_logo)
             AppID.ANY_DEVICE_APP -> logoImageView.setImageResource(R.drawable.nirsense_logo)
         }
-
-//        val requestOptions = RequestOptions().transform(AlphaTransformation(0.1f))
-//
-//        Glide.with(this)
-//            .asGif()
-//            .load(R.drawable.animation)
-//            .apply(requestOptions)
-//            .transition(DrawableTransitionOptions.withCrossFade())
-//            .into(logoImageView)
     }
 
     private fun handleDeviceStatusChange(status: BleManager.SetupState) {
@@ -404,14 +401,14 @@ class HomeFragment : Fragment(), DeviceChangeListener {
             var statusText = "${device.name} status: $formattedState"
 
             if (status == BleManager.SetupState.SETUP_COMPLETE) {
-                if (globalCurrentDevice!!.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Argus) {
+                if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Argus) {
                     statusText += "\n\n Device Family: ${device.deviceVersionInfo.deviceFamily}\n" +
                             "Argus Version: ${device.deviceVersionInfo.argusVersion}\n" +
                             "Firmware Version: ${device.deviceVersionInfo.firmwareVersion}\n" +
                             "NVM Version: ${device.deviceVersionInfo.nvmVersion}\n" +
                             "Live Data File: Documents/NIRSense/${device.filename}.csv\n"
                 }
-                else if (globalCurrentDevice!!.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) {
+                else if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) {
                     statusText += "\n\n Device Family: ${device.deviceVersionInfo.deviceFamily}\n" +
                             "Firmware Version: ${device.deviceVersionInfo.firmwareVersion}\n" +
                             "Live Data File: Documents/NIRSense/${device.filename}.csv\n"
@@ -613,7 +610,7 @@ class HomeFragment : Fragment(), DeviceChangeListener {
     }
 
     private fun showBlurredPopup() {
-        //animateBlurView() //TODO finish implementing blur view.
+        animateBlurView()
         scanPopupWindow.showAtLocation(binding.scanButton, Gravity.CENTER, 0, 0)
     }
 
@@ -647,9 +644,37 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         }
     }
 
+    private fun showLoadingAnimation() {
+        val requestOptions = RequestOptions().transform(AlphaTransformation(0.1f))
+
+        Glide.with(this)
+            .asGif()
+            .load(R.drawable.animation)
+            .apply(requestOptions)
+            .transition(DrawableTransitionOptions.withCrossFade())
+            .into(loadingAnimation)
+
+        loadingAnimation.visibility = View.VISIBLE
+    }
+
+    private fun stopLoadingAnimation() {
+        Glide.with(this).clear(loadingAnimation)
+        loadingAnimation.visibility = View.GONE
+    }
+
+    private fun hideButtons() {
+        binding.scanButton.visibility = View.GONE
+        binding.messagesButton.visibility = View.GONE
+    }
+
+    private fun showButtons() {
+        binding.scanButton.visibility = View.VISIBLE
+        binding.messagesButton.visibility = View.VISIBLE
+    }
+
     override fun onLowMemory() {
         super.onLowMemory()
-        //Glide.get(requireContext()).clearMemory()
+        Glide.get(requireContext()).clearMemory()
     }
 }
 
@@ -666,9 +691,6 @@ var globalCurrentDevice: Device? = null
     }
 
 var deviceChangeListener: DeviceChangeListener? = null
-
-
-//
 
 class AlphaTransformation(private val alpha: Float) : BitmapTransformation() {
 
