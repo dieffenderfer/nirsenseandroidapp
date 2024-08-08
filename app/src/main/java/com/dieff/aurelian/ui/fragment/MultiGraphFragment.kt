@@ -1,6 +1,7 @@
 package com.dieff.aurelian.ui.fragment
 
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -19,13 +20,9 @@ class MultiGraphFragment : Fragment() {
     private var _binding: FragmentMultiGraphBinding? = null
     private val binding get() = _binding!!
 
-    private var isEmbedded = false
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        arguments?.let {
-            isEmbedded = it.getBoolean(ARG_IS_EMBEDDED, false)
-        }
+
     }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
@@ -39,11 +36,6 @@ class MultiGraphFragment : Fragment() {
         // Set app version text
         binding.versionTextView.text = "NIRSense ${AppConfig.appName} Android App v${AppConfig.appVersion}"
 
-        // Hide the version text if the fragment is embedded
-        if (isEmbedded) {
-            binding.versionTextView.visibility = View.GONE
-        }
-
         viewLifecycleOwner.lifecycleScope.launch {
             BleManager.allDevices.collectLatest { devices ->
                 updateDeviceViews(devices.distinctBy { it.macAddressString }.take(6))
@@ -55,7 +47,7 @@ class MultiGraphFragment : Fragment() {
         // Clear existing fragments
         childFragmentManager.fragments.forEach { fragment ->
             if (fragment is SingleGraphFragment) {
-                childFragmentManager.beginTransaction().remove(fragment).commit()
+                childFragmentManager.beginTransaction().remove(fragment).commitNow()
             }
         }
 
@@ -75,8 +67,9 @@ class MultiGraphFragment : Fragment() {
                 val singleGraphFragment = SingleGraphFragment.newInstance(device.macAddressString, true)
                 childFragmentManager.beginTransaction()
                     .replace(viewId, singleGraphFragment)
-                    .commit()
+                    .commitNow()
 
+                // Set the click listener
                 binding.root.findViewById<View>(viewId).setOnClickListener {
                     navigateToSingleGraphFragment(device)
                 }
@@ -101,8 +94,12 @@ class MultiGraphFragment : Fragment() {
     }
 
     private fun navigateToSingleGraphFragment(device: Device) {
-        val action = MultiGraphFragmentDirections.actionMultiGraphFragmentToSingleGraphFragment(device.macAddressString)
-        findNavController().navigate(action)
+        try {
+            val action = MultiGraphFragmentDirections.actionMultiGraphFragmentToSingleGraphFragment(device.macAddressString)
+            findNavController().navigate(action)
+        } catch (e: Exception) {
+            Log.e("MultiGraphFragment", "Navigation failed: ${e.message}")
+        }
     }
 
     override fun onDestroyView() {
@@ -110,15 +107,4 @@ class MultiGraphFragment : Fragment() {
         _binding = null
     }
 
-    companion object {
-        private const val ARG_IS_EMBEDDED = "is_embedded"
-
-        fun newInstance(isEmbedded: Boolean): MultiGraphFragment {
-            return MultiGraphFragment().apply {
-                arguments = Bundle().apply {
-                    putBoolean(ARG_IS_EMBEDDED, isEmbedded)
-                }
-            }
-        }
-    }
 }
