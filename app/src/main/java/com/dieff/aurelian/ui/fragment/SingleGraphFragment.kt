@@ -92,7 +92,7 @@ class SingleGraphFragment : Fragment() {
 
     private fun setupUI() {
         if (isEmbedded) {
-            hideControlButtons()
+            adjustUIElementsForEmbed()
         }
 
         binding.apply {
@@ -230,14 +230,20 @@ class SingleGraphFragment : Fragment() {
             .show()
     }
 
-    private fun hideControlButtons() {
+    //If Embedded, adjust how fragment displays
+    private fun adjustUIElementsForEmbed() {
         binding.apply {
+            //Hide most buttons
             btnCaptureBounds.visibility = View.GONE
             btnCaptureBounds2.visibility = View.GONE
             btnResetAutoscale.visibility = View.GONE
             btnResetAutoscale2.visibility = View.GONE
             btnExport.visibility = View.GONE
             btnClear.visibility = View.GONE
+
+            //Hide app version text at the bottom
+            binding.versionTextView.visibility = View.GONE
+
         }
     }
 
