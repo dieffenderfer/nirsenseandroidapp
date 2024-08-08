@@ -5,11 +5,13 @@ import android.graphics.Color
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.View.GONE
 import android.widget.TextView
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.transition.Visibility
 import com.dieff.aurelian.foregroundService.ble.ArgusPacket
 import com.dieff.aurelian.foregroundService.ble.AurelianPacket
 import com.dieff.aurelian.foregroundService.ble.BleManager
@@ -388,25 +390,39 @@ class SingleGraphViewModel : ViewModel() {
                     }
                     // Notify the chart that the data has changed
                     Log.d("DBG_PP","  NotifyDataChanged Statements")
-                    lineChart.data.notifyDataChanged()
-                    lineChart.notifyDataSetChanged()
+                    if (lineChart.visibility != GONE) {
+                        lineChart.data.notifyDataChanged()
+                        lineChart.notifyDataSetChanged()
+                    }
 
                     // Notify the second chart that the data has changed
-                    lineChart2.data.notifyDataChanged()
-                    lineChart2.notifyDataSetChanged()
+                    if (lineChart2.visibility != GONE) {
+                        lineChart2.data.notifyDataChanged()
+                        lineChart2.notifyDataSetChanged()
+                    }
 
                     if (smoothAnimation) {
                         // If smooth animation is enabled, update the charts after each point
-                        lineChart.invalidate()
-                        lineChart2.invalidate()
+                        if (lineChart.visibility != GONE) {
+                            lineChart.invalidate()
+                        }
+                        if (lineChart2.visibility != GONE) {
+                            lineChart2.invalidate()
+                        }
+
+
                         animationDelay.value?.let { delay(it) }
                     }
                 }
 
                 if (!smoothAnimation) {
                     // If smooth animation is disabled, update the charts once after processing all points
-                    lineChart.invalidate()
-                    lineChart2.invalidate()
+                    if (lineChart.visibility != GONE) {
+                        lineChart.invalidate()
+                    }
+                    if (lineChart2.visibility != GONE) {
+                        lineChart2.invalidate()
+                    }
                 }
             }
         }

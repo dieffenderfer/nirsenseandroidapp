@@ -238,10 +238,15 @@ object BleManager : Application() {
                     return@launch
                 }
                 val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
-                Log.d("DBG", "Discovered ${device?.bluetoothGatt?.services?.size} services for ${device?.macAddress}.")
-                device?.bluetoothGatt?.printGattTable()
-                updateDeviceSetupState(device!!, SetupState.SERVICES_DISCOVERED)
-                negotiateMtuSize(mtuSizeRequest)
+
+                device?.let {
+                    Log.d("DBG", "Discovered ${it.bluetoothGatt?.services?.size} services for ${it.macAddress}.")
+                    it.bluetoothGatt?.printGattTable()
+                    updateDeviceSetupState(it, SetupState.SERVICES_DISCOVERED)
+                    negotiateMtuSize(mtuSizeRequest)
+                } ?: run {
+                    Log.e("DBG", "Device is null. Cannot proceed with service discovery.")
+                }
             }
         }
 

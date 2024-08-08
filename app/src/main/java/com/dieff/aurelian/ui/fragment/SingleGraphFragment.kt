@@ -115,6 +115,14 @@ class SingleGraphFragment : Fragment() {
             progressBar.progress = 0
             progressBar.max = 100
 
+            binding.apply {
+                // Bind the TextViews for "Not EEG 1" and "Not EEG 2"
+                val labelChart1 = binding.labelChart1
+                val labelChart2 = binding.labelChart2
+                val squareChart1 = binding.squareChart1
+                val squareChart2 = binding.squareChart2
+            }
+
             dismissButton.visibility = View.GONE
             dismissButton.setOnClickListener {
                 hideProgressInfo()
@@ -243,6 +251,18 @@ class SingleGraphFragment : Fragment() {
 
             //Hide app version text at the bottom
             binding.versionTextView.visibility = View.GONE
+
+            //Probably not hiding these for long:
+            binding.run {
+                lineChart2.visibility = View.GONE
+                digitalReadout.visibility = View.GONE
+                // Hide the "Not EEG 1" and "Not EEG 2" labels
+                labelChart1.visibility = View.GONE
+                labelChart2.visibility = View.GONE
+                squareChart1.visibility = View.GONE
+                squareChart2.visibility = View.GONE
+            }
+
 
         }
     }

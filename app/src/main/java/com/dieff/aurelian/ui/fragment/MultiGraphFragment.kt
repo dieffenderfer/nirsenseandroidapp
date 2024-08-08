@@ -1,19 +1,12 @@
 package com.dieff.aurelian.ui.fragment
 
 import android.os.Bundle
-import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
-import android.widget.TextView
-import android.widget.FrameLayout
-import android.widget.LinearLayout
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
 import com.dieff.aurelian.AppConfig
 import com.dieff.aurelian.R
 import com.dieff.aurelian.databinding.FragmentMultiGraphBinding
@@ -53,36 +46,57 @@ class MultiGraphFragment : Fragment() {
 
         viewLifecycleOwner.lifecycleScope.launch {
             BleManager.allDevices.collectLatest { devices ->
-                updateDeviceViews(devices.distinctBy { it.macAddressString })
+                updateDeviceViews(devices.distinctBy { it.macAddressString }.take(6))
             }
         }
     }
 
     private fun updateDeviceViews(devices: List<Device>) {
-        binding.deviceContainer.removeAllViews()
+        // Clear existing fragments
         childFragmentManager.fragments.forEach { fragment ->
             if (fragment is SingleGraphFragment) {
                 childFragmentManager.beginTransaction().remove(fragment).commit()
             }
         }
 
-        devices.forEach { device ->
-            val deviceView = layoutInflater.inflate(R.layout.item_device_graph, binding.deviceContainer, false)
-            val deviceNameView = deviceView.findViewById<TextView>(R.id.deviceName)
-            val detailsButton = deviceView.findViewById<Button>(R.id.detailsButton)
-            val graphContainer = deviceView.findViewById<LinearLayout>(R.id.graphContainer)
-
-            deviceNameView.text = device.name
-            detailsButton.setOnClickListener {
-                navigateToSingleGraphFragment(device)
+        // Add new fragments
+        devices.forEachIndexed { index, device ->
+            val containerViewId = when (index) {
+                0 -> R.id.graphContainer1
+                1 -> R.id.graphContainer2
+                2 -> R.id.graphContainer3
+                3 -> R.id.graphContainer4
+                4 -> R.id.graphContainer5
+                5 -> R.id.graphContainer6
+                else -> null
             }
 
-            val singleGraphFragment = SingleGraphFragment.newInstance(device.macAddressString, true)
-            childFragmentManager.beginTransaction()
-                .add(graphContainer.id, singleGraphFragment)
-                .commit()
+            containerViewId?.let { viewId ->
+                val singleGraphFragment = SingleGraphFragment.newInstance(device.macAddressString, true)
+                childFragmentManager.beginTransaction()
+                    .replace(viewId, singleGraphFragment)
+                    .commit()
 
-            binding.deviceContainer.addView(deviceView)
+                binding.root.findViewById<View>(viewId).setOnClickListener {
+                    navigateToSingleGraphFragment(device)
+                }
+            }
+        }
+
+        // Update visibility of containers
+        for (i in 0 until 6) {
+            val containerViewId = when (i) {
+                0 -> R.id.graphContainer1
+                1 -> R.id.graphContainer2
+                2 -> R.id.graphContainer3
+                3 -> R.id.graphContainer4
+                4 -> R.id.graphContainer5
+                5 -> R.id.graphContainer6
+                else -> null
+            }
+            containerViewId?.let { viewId ->
+                binding.root.findViewById<View>(viewId).visibility = if (i < devices.size) View.VISIBLE else View.GONE
+            }
         }
     }
 
