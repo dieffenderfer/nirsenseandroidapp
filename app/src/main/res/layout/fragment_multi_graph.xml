@@ -12,4 +12,14 @@
         android:padding="16dp">
     </LinearLayout>
 
+    <TextView
+        android:id="@+id/versionTextView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center_horizontal"
+        android:layout_margin="16dp"
+        android:text="App Version"
+        android:textColor="@android:color/black"
+        android:textSize="14sp" />
+
 </ScrollView>

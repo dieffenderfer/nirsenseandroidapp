@@ -14,6 +14,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.dieff.aurelian.AppConfig
 import com.dieff.aurelian.R
 import com.dieff.aurelian.databinding.FragmentMultiGraphBinding
 import com.dieff.aurelian.foregroundService.ble.BleManager
@@ -25,6 +26,15 @@ class MultiGraphFragment : Fragment() {
     private var _binding: FragmentMultiGraphBinding? = null
     private val binding get() = _binding!!
 
+    private var isEmbedded = false
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        arguments?.let {
+            isEmbedded = it.getBoolean(ARG_IS_EMBEDDED, false)
+        }
+    }
+
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View {
         _binding = FragmentMultiGraphBinding.inflate(inflater, container, false)
         return binding.root
@@ -32,6 +42,15 @@ class MultiGraphFragment : Fragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        // Set app version text
+        binding.versionTextView.text = "NIRSense ${AppConfig.appName} Android App v${AppConfig.appVersion}"
+
+        // Hide the version text if the fragment is embedded
+        if (isEmbedded) {
+            binding.versionTextView.visibility = View.GONE
+        }
+
         viewLifecycleOwner.lifecycleScope.launch {
             BleManager.allDevices.collectLatest { devices ->
                 updateDeviceViews(devices.distinctBy { it.macAddressString })
@@ -75,5 +94,17 @@ class MultiGraphFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         _binding = null
+    }
+
+    companion object {
+        private const val ARG_IS_EMBEDDED = "is_embedded"
+
+        fun newInstance(isEmbedded: Boolean): MultiGraphFragment {
+            return MultiGraphFragment().apply {
+                arguments = Bundle().apply {
+                    putBoolean(ARG_IS_EMBEDDED, isEmbedded)
+                }
+            }
+        }
     }
 }
