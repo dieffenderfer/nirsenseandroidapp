@@ -73,7 +73,6 @@ class SingleGraphViewModel : ViewModel() {
         ReadoutConfig("RR", "rpm")
     )
 
-
     fun setupForDeviceType(deviceType: Device.DeviceFamily) {
         when (deviceType) {
             Device.DeviceFamily.Argus -> setupArgus()
@@ -84,8 +83,6 @@ class SingleGraphViewModel : ViewModel() {
 
     private fun setupArgus() {
         smoothAnimation = true
-
-        //TODO FIX_ME make it different based on argus 1 and argus 2+
         setAnimationDelay(16L)
         readoutConfigs = listOf(
             ReadoutConfig("StO2", "%"),
@@ -120,37 +117,26 @@ class SingleGraphViewModel : ViewModel() {
     fun setupLineChartDebug(lineChart: LineChart, lineChart2: LineChart) {
         Log.d("DBG", "Entered setupLineChartDebug")
 
-        //Bottom Chart (PPG)
-        val entries1 = ArrayList<Entry>()
-        val entries2 = ArrayList<Entry>()
-
-        val dataSet1 = LineDataSet(entries1, "Data 1")
-        val dataSet2 = LineDataSet(entries2, "Data 2")
-
-        dataSet1.color = Color.RED
-        dataSet1.valueTextColor = Color.BLUE
-        dataSet1.setDrawValues(false)
-        dataSet1.setDrawFilled(false)
-        dataSet1.setDrawCircles(false)
-        dataSet1.fillColor = Color.GREEN
-        dataSet1.mode = LineDataSet.Mode.LINEAR
-
-        dataSet2.color = Color.RED
-        dataSet2.valueTextColor = Color.BLUE
-        dataSet2.setDrawValues(false)
-        dataSet2.setDrawFilled(false)
-        dataSet2.setDrawCircles(false)
-        dataSet2.fillColor = Color.RED
-        dataSet2.mode = LineDataSet.Mode.LINEAR
-
+        //Bottom Chart (PPG or EEG)
         val dataSets = ArrayList<ILineDataSet>()
-        dataSets.add(dataSet1)
-        dataSets.add(dataSet2)
+        val colors = listOf(Color.RED, Color.BLUE, Color.GREEN, Color.rgb(255, 165, 0), Color.CYAN, Color.MAGENTA) //Color.rgb(255, 165, 0) is orange
+
+        for (i in 0 until 12) { // 6 ping datasets and 6 pong datasets
+            val entries = ArrayList<Entry>()
+            val dataSet = LineDataSet(entries, "Data ${i/2 + 1}")
+            dataSet.color = colors[i/2]
+            dataSet.valueTextColor = Color.BLUE
+            dataSet.setDrawValues(false)
+            dataSet.setDrawFilled(false)
+            dataSet.setDrawCircles(false)
+            dataSet.fillColor = colors[i/2]
+            dataSet.mode = LineDataSet.Mode.LINEAR
+            dataSets.add(dataSet)
+        }
 
         val lineData = LineData(dataSets)
 
         val xAxis = lineChart.xAxis
-
         xAxis.setAxisMinimum(0f)
         xAxis.setAxisMaximum(xMax.toFloat())
 
@@ -160,12 +146,9 @@ class SingleGraphViewModel : ViewModel() {
         lineChart.legend.isEnabled = false //Hide legend-- we manually drew one in the xml
         lineChart.invalidate()
 
-        //Top Chart (StO2)
+        //Top Chart (StO2 or EEG C1)
         val entries1_2 = ArrayList<Entry>()
-        val entries2_2 = ArrayList<Entry>()
-
         val dataSet1_2 = LineDataSet(entries1_2, "Data 1")
-        val dataSet2_2 = LineDataSet(entries2_2, "Data 2")
 
         dataSet1_2.color = Color.BLUE
         dataSet1_2.valueTextColor = Color.BLUE
@@ -175,17 +158,8 @@ class SingleGraphViewModel : ViewModel() {
         dataSet1_2.fillColor = Color.GREEN
         dataSet1_2.mode = LineDataSet.Mode.LINEAR
 
-        dataSet2_2.color = Color.RED//Color.MAGENTA
-        dataSet2_2.valueTextColor = Color.BLUE
-        dataSet2_2.setDrawValues(false)
-        dataSet2_2.setDrawFilled(false) //true looked cool.
-        dataSet2_2.setDrawCircles(false)
-        dataSet2_2.fillColor = Color.RED
-        dataSet2_2.mode = LineDataSet.Mode.LINEAR
-
         val dataSets_2 = ArrayList<ILineDataSet>()
         dataSets_2.add(dataSet1_2)
-        //dataSets_2.add(dataSet2_2)
 
         val lineData_2 = LineData(dataSets_2)
 
@@ -241,7 +215,6 @@ class SingleGraphViewModel : ViewModel() {
         lineChart.invalidate()
     }
 
-
     @SuppressLint("NullSafeMutableLiveData")
     fun toggleSampling() {
         currentDevice?.let { device ->
@@ -278,16 +251,15 @@ class SingleGraphViewModel : ViewModel() {
         Log.d("DBG", "notHomeFragment - Entered receivePacketArrayFromDataAggregator")
 
         var existingDatasets = lineChart.lineData.dataSets
-        val pingDataset = existingDatasets[0]
-        val pongDataset = existingDatasets[1]
+        val pingPongDatasets = existingDatasets.chunked(2)
 
         var existingDatasets2 = lineChart2.lineData.dataSets
         val lineChart2Dataset = existingDatasets2[0]
 
-        bufferMonitorJob = viewModelScope.launch {
-            var pingNotPong = true
+        val pingNotPongArray = Array(6) { true }
 
-            currentDevice?.dataAggregator?.previewDataFlow?.collect { graphPackets -> //To show stored data coming in, we could collect storedDataFlow
+        bufferMonitorJob = viewModelScope.launch {
+            currentDevice?.dataAggregator?.previewDataFlow?.collect { graphPackets ->
                 Log.d("DBG", "notHomeFragment I got the message on the channel... from the dataAggregator!")
 
                 // Digital readouts
@@ -315,34 +287,33 @@ class SingleGraphViewModel : ViewModel() {
                     xAxis_2.setAxisMinimum(everIncreasingLowerBound)
                     xAxis_2.setAxisMaximum(everIncreasingUpperBound)
 
-                    Log.d("DBG_PP", "****** pingNotPong = $pingNotPong ******")
-                    // Test for First Pass
-                    if (pingDataset.entryCount + pongDataset.entryCount < xMax + 1) {
-                        Log.d("DBG_PP", "FIRST_PASS: pingDataset is beforeDataSet")
-                        Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
-                        // Add new data as an Entry to the end of the beforeDataset
-                        val newEntry = when (graphPacket) {
-                            is ArgusPacket -> Entry(pingDataset.entryCount.toFloat(), graphPacket.ppgWaveform.toFloat())
-                            is AurelianPacket -> Entry(pingDataset.entryCount.toFloat(), graphPacket.eegC2.toFloat())
-                            else -> null
-                        }
-                        newEntry?.let {
-                            Log.d("DBG_PP", "  ADD ENTRY TO pingDataSet $it")
-                            pingDataset.addEntry(it)
-                        }
-                        Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
-                        if (pingDataset.entryCount == xMax + 1) {
-                            pingNotPong = false // switch to pongDataset being before buffer
-                            Log.d("DBG_PP", "  Toggled pingNotPong to: $pingNotPong")
-                        }
-                    } else {
-                        if (pingNotPong) {  // pingDataset is before buffer
-                            Log.d("DBG_PP", "ODD_PASS: pingDataset is beforeDataSet")
+                    val datasetCount = when (graphPacket) {
+                        is ArgusPacket -> 1
+                        is AurelianPacket -> 6
+                        else -> 0
+                    }
+
+                    for (i in 0 until datasetCount) {
+                        val (pingDataset, pongDataset) = pingPongDatasets[i]
+
+                        Log.d("DBG_PP", "****** pingNotPong[$i] = ${pingNotPongArray[i]} ******")
+
+                        // Test for First Pass
+                        if (pingDataset.entryCount + pongDataset.entryCount < xMax + 1) {
+                            Log.d("DBG_PP", "FIRST_PASS: pingDataset is beforeDataSet")
                             Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
                             // Add new data as an Entry to the end of the beforeDataset
                             val newEntry = when (graphPacket) {
                                 is ArgusPacket -> Entry(pingDataset.entryCount.toFloat(), graphPacket.ppgWaveform.toFloat())
-                                is AurelianPacket -> Entry(pingDataset.entryCount.toFloat(), graphPacket.eegC2.toFloat())
+                                is AurelianPacket -> Entry(pingDataset.entryCount.toFloat(), when(i) {
+                                    0 -> graphPacket.eegC1.toFloat()
+                                    1 -> graphPacket.eegC2.toFloat()
+                                    2 -> graphPacket.eegC3.toFloat()
+                                    3 -> graphPacket.eegC4.toFloat()
+                                    4 -> graphPacket.eegC5.toFloat()
+                                    5 -> graphPacket.eegC6.toFloat()
+                                    else -> 0f
+                                })
                                 else -> null
                             }
                             newEntry?.let {
@@ -350,40 +321,70 @@ class SingleGraphViewModel : ViewModel() {
                                 pingDataset.addEntry(it)
                             }
                             Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
-                            if (pongDataset.entryCount > 0) {
-                                Log.d("DBG_PP", "  REMOVE ENTRY FROM pongDataSet: entryCount =  ${pongDataset.entryCount}")
-                                pongDataset.removeFirst()
-                                if (pongDataset.entryCount == 0) {
-                                    pingNotPong = false  // switch to pongDataset being before buffer
-                                    Log.d("DBG_PP", "  Toggled pingNotPong to: $pingNotPong")
+                            if (pingDataset.entryCount == xMax + 1) {
+                                pingNotPongArray[i] = false // switch to pongDataset being before buffer
+                                Log.d("DBG_PP", "  Toggled pingNotPong[$i] to: ${pingNotPongArray[i]}")
+                            }
+                        } else {
+                            if (pingNotPongArray[i]) {  // pingDataset is before buffer
+                                Log.d("DBG_PP", "ODD_PASS: pingDataset is beforeDataSet")
+                                Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                                // Add new data as an Entry to the end of the beforeDataset
+                                val newEntry = when (graphPacket) {
+                                    is ArgusPacket -> Entry(pingDataset.entryCount.toFloat(), graphPacket.ppgWaveform.toFloat())
+                                    is AurelianPacket -> Entry(pingDataset.entryCount.toFloat(), when(i) {
+                                        0 -> graphPacket.eegC1.toFloat()
+                                        1 -> graphPacket.eegC2.toFloat()
+                                        2 -> graphPacket.eegC3.toFloat()
+                                        3 -> graphPacket.eegC4.toFloat()
+                                        4 -> graphPacket.eegC5.toFloat()
+                                        5 -> graphPacket.eegC6.toFloat()
+                                        else -> 0f
+                                    })
+                                    else -> null
                                 }
-                            }
-                        } else { // pongDataset is before buffer
-                            Log.d("DBG_PP", "EVN_PASS: pongDataset is beforeDataSet")
-                            Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
-                            val newEntry = when (graphPacket) {
-                                is ArgusPacket -> Entry(pongDataset.entryCount.toFloat(), graphPacket.ppgWaveform.toFloat())
-                                is AurelianPacket -> Entry(pongDataset.entryCount.toFloat(), graphPacket.eegC2.toFloat())
-                                else -> null
-                            }
-                            newEntry?.let {
-                                Log.d("DBG_PP", "  ADD ENTRY TO pongDataSet $it")
-                                pongDataset.addEntry(it)
-                            }
-                            Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
-                            if (pingDataset.entryCount > 0) {
-                                Log.d(
-                                    "DBG_PP",
-                                    "  REMOVE ENTRY FROM pingDataSet: entryCount =  ${pingDataset.entryCount}"
-                                )
-                                pingDataset.removeFirst()
-                                Log.d(
-                                    "DBG_PP",
-                                    "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\""
-                                )
-                                if (pingDataset.entryCount == 0) {
-                                    pingNotPong = true // switch to pingDataset to before buffer
-                                    Log.d("DBG_PP", "  Toggled pingNotPong to: $pingNotPong")
+                                newEntry?.let {
+                                    Log.d("DBG_PP", "  ADD ENTRY TO pingDataSet $it")
+                                    pingDataset.addEntry(it)
+                                }
+                                Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                                if (pongDataset.entryCount > 0) {
+                                    Log.d("DBG_PP", "  REMOVE ENTRY FROM pongDataSet: entryCount =  ${pongDataset.entryCount}")
+                                    pongDataset.removeFirst()
+                                    if (pongDataset.entryCount == 0) {
+                                        pingNotPongArray[i] = false  // switch to pongDataset being before buffer
+                                        Log.d("DBG_PP", "  Toggled pingNotPong[$i] to: ${pingNotPongArray[i]}")
+                                    }
+                                }
+                            } else { // pongDataset is before buffer
+                                Log.d("DBG_PP", "EVN_PASS: pongDataset is beforeDataSet")
+                                Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                                val newEntry = when (graphPacket) {
+                                    is ArgusPacket -> Entry(pongDataset.entryCount.toFloat(), graphPacket.ppgWaveform.toFloat())
+                                    is AurelianPacket -> Entry(pongDataset.entryCount.toFloat(), when(i) {
+                                        0 -> graphPacket.eegC1.toFloat()
+                                        1 -> graphPacket.eegC2.toFloat()
+                                        2 -> graphPacket.eegC3.toFloat()
+                                        3 -> graphPacket.eegC4.toFloat()
+                                        4 -> graphPacket.eegC5.toFloat()
+                                        5 -> graphPacket.eegC6.toFloat()
+                                        else -> 0f
+                                    })
+                                    else -> null
+                                }
+                                newEntry?.let {
+                                    Log.d("DBG_PP", "  ADD ENTRY TO pongDataSet $it")
+                                    pongDataset.addEntry(it)
+                                }
+                                Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                                if (pingDataset.entryCount > 0) {
+                                    Log.d("DBG_PP", "  REMOVE ENTRY FROM pingDataSet: entryCount =  ${pingDataset.entryCount}")
+                                    pingDataset.removeFirst()
+                                    Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                                    if (pingDataset.entryCount == 0) {
+                                        pingNotPongArray[i] = true // switch to pingDataset to before buffer
+                                        Log.d("DBG_PP", "  Toggled pingNotPong[$i] to: ${pingNotPongArray[i]}")
+                                    }
                                 }
                             }
                         }
@@ -409,7 +410,6 @@ class SingleGraphViewModel : ViewModel() {
                         if (lineChart2.visibility != GONE) {
                             lineChart2.invalidate()
                         }
-
 
                         animationDelay.value?.let { delay(it) }
                     }

@@ -56,9 +56,6 @@ class SingleGraphFragment : Fragment() {
     private lateinit var progressText: TextView
     private lateinit var dismissButton: Button
 
-
-
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
@@ -262,8 +259,6 @@ class SingleGraphFragment : Fragment() {
                 squareChart1.visibility = View.GONE
                 squareChart2.visibility = View.GONE
             }
-
-
         }
     }
 
