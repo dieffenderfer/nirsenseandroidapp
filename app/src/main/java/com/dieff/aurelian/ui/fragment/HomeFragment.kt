@@ -151,6 +151,8 @@ class HomeFragment : Fragment(), DeviceChangeListener {
     // Flag to prevent multiple navigations to MultiGraphFragment
     private var hasNavigatedToMultiGraph = false
 
+    private var setupIsComplete = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         Log.d("DBG","HomeFragment - Entered onCreate")
@@ -196,6 +198,10 @@ class HomeFragment : Fragment(), DeviceChangeListener {
             0 -> statusTextView.text = "Please connect to a device.\n\nTap the Bluetooth Setup button to proceed."
             in 1..10 -> statusTextView.text = "Setting up the ${numberStrings[connectedDevicesCount]} device, please wait..."
             else -> statusTextView.text = "Connecting to $connectedDevicesCount devices..."
+        }
+
+        if (setupIsComplete) {
+            statusTextView.text = "Setup is complete."
         }
     }
 
@@ -352,6 +358,8 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         showLoadingAnimation()
         hideButtons()
 
+        setupIsComplete = false
+
         //TODO improve this to not use delay.
         val delayTime: Long = 4000
 
@@ -367,7 +375,17 @@ class HomeFragment : Fragment(), DeviceChangeListener {
                 BleManager.connectedDevices.collect { devices ->
                     if (devices.isNotEmpty() && !hasNavigatedToMultiGraph) {
                         delay(delayTime * selectedPositions.size) //TODO improve this to not use delay.
+
+                        // Update status text to indicate setup completion
+                        statusTextView.text = "Setup is complete."
+                        setupIsComplete = true
+
+                        // Add a small delay to allow the user to see the updated text
+                        delay(1000)
+
                         stopLoadingAnimation()
+
+
 
                          val action = HomeFragmentDirections.actionHomeFragmentToMultiGraphFragment()
                          findNavController().navigate(action)
