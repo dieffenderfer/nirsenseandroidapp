@@ -281,7 +281,7 @@ class SingleGraphFragment : Fragment() {
     }
 
     private fun updateStatusText(connectionStatus: Device.ConnectionStatus) {
-        val deviceName = currentDevice.name ?: "Unknown Device"
+        val deviceName = currentDevice.name?.removePrefix("NIRSense ") ?: "Unknown Device"
         val statusText = when (connectionStatus) {
             Device.ConnectionStatus.CONNECTED -> "Connected"
             Device.ConnectionStatus.CONNECTING -> "Connecting..."
