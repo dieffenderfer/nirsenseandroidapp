@@ -228,8 +228,19 @@ class Device(
      * DeviceDataAggregator handles the aggregation, processing, and storage of packet data.
      */
     inner class DeviceDataAggregator {
+        // Function to determine the appropriate ARRAY_SIZE_GRAPHING
+        private fun determineArraySizeGraphing(): Int {
+            return when (deviceVersionInfo.deviceFamily) {
+                DeviceFamily.Aurelian -> 5
+                DeviceFamily.Argus -> {
+                    if (deviceVersionInfo.argusVersion >= 2) 6 else 1
+                }
+                else -> 1 // Default size for other device families
+            }
+        }
+
         // Constants for array sizes and batch processing limits
-        private val ARRAY_SIZE_GRAPHING = 6
+        private val ARRAY_SIZE_GRAPHING = determineArraySizeGraphing()
         private val ARRAY_SIZE_SAVING = ARRAY_SIZE_GRAPHING * 100
         private val MAX_BATCH_SIZE = 1000
 
@@ -285,7 +296,6 @@ class Device(
             }.toTypedArray()
 
             _previewDataFlow.tryEmit(processedPackets)
-            //_totalProcessedPackets.addAndGet(processedCount)
         }
 
         /**
@@ -317,11 +327,7 @@ class Device(
             if (isPreview) {
                 // Update graphing buffer
                 dbAggregateArrayGraphing[currentIndexGraphing] = packet
-                currentIndexGraphing++
-
-                if (currentIndexGraphing == ARRAY_SIZE_GRAPHING) {
-                    currentIndexGraphing = 0
-                }
+                currentIndexGraphing = (currentIndexGraphing + 1) % ARRAY_SIZE_GRAPHING
             }
 
             // Update saving buffer

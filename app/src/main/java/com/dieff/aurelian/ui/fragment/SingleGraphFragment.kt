@@ -226,9 +226,9 @@ class SingleGraphFragment : Fragment() {
 
     private fun showRemoveDeviceConfirmationDialog() {
         AlertDialog.Builder(requireContext())
-            .setTitle("Disconnect Device")
+            .setTitle("Remove Device")
             .setMessage("Are you sure you want to disconnect from ${currentDevice.name}?")
-            .setPositiveButton("Disconnect") { _, _ ->
+            .setPositiveButton("Remove") { _, _ ->
                 removeDevice()
             }
             .setNegativeButton("Cancel", null)
