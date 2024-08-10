@@ -114,8 +114,8 @@ class SingleGraphViewModel : ViewModel() {
         )
     }
 
-    fun setupLineChartDebug(lineChart: LineChart, lineChart2: LineChart) {
-        Log.d("DBG", "Entered setupLineChartDebug")
+    fun setupLineCharts(lineChart: LineChart, lineChart2: LineChart) {
+        Log.d("DBG", "Entered setupLineCharts")
 
         //Bottom Chart (PPG or EEG)
         val dataSets = ArrayList<ILineDataSet>()

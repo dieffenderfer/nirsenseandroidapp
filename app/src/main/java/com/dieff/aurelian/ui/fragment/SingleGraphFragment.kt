@@ -136,7 +136,7 @@ class SingleGraphFragment : Fragment() {
             readoutBox4Bottom.text = singleGraphViewModel.readoutConfigs[3].unit
         }
 
-        singleGraphViewModel.setupLineChartDebug(lineChart, lineChart2)
+        singleGraphViewModel.setupLineCharts(lineChart, lineChart2)
         singleGraphViewModel.receivePacketArrayFromDataAggregator(lineChart, lineChart2, readoutBox1Middle, readoutBox2Middle, readoutBox3Middle, readoutBox4Middle)
 
         updateSamplingButtonText(currentDevice.isStreaming.value ?: false)
