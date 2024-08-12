@@ -19,7 +19,11 @@ object DataParser {
     private const val MAX_PACKETS_PER_PROCESS = 20 // Limit to avoid memory issues
     private const val AURELIAN_PACKET_SIZE = 120
     private const val AURELIAN_PACKETS_PER_MESSAGE = 5
+    private const val ARGUS_DATA_PACKET_SIZE = 80
+    private const val AERIE_PACKET_SIZE = 40
     private const val MAX_TIMER_BITS = 0xFFFFFFFFU
+    private const val ARGUS_1_TIME_DIVISOR = 4e6
+    private const val ARGUS_2_TIME_DIVISOR = 32768.0
     private val PLACEHOLDER_TIMESTAMP = Instant.EPOCH
     private val DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS").withZone(ZoneOffset.UTC)
 
@@ -51,6 +55,7 @@ object DataParser {
         val packets = when (deviceVersionInfo.deviceFamily) {
             Device.DeviceFamily.Argus -> processArgusData(data, device)
             Device.DeviceFamily.Aurelian -> processAurelianData(data, device)
+            Device.DeviceFamily.Aerie -> processAerieData(data, device)
             else -> {
                 Log.w("DataParser", "Unsupported device family: ${deviceVersionInfo.deviceFamily}")
                 emptyList()
@@ -98,8 +103,8 @@ object DataParser {
             accelerometerY = buffer.getShort(92),
             accelerometerZ = buffer.getShort(94),
             timeElapsed = buffer.getInt(96).toDouble() / 5.0,
-            counter = (buffer.getShort(100).toInt() and 0x7FFF) * 5,
-            marker = (buffer.getShort(100).toInt() and 0x8000) != 0,
+            counter = (((buffer.get(101).toInt() and 0xFF) shl 8) or (buffer.get(100).toInt() and 0xFF)) and 0x7FFF,
+            marker = (buffer.get(101).toInt() and 0x80) != 0,
             sessionId = buffer.get(102).toUByte(),
             pulseRate = buffer.get(103).toUByte(),
             tdcsImpedance = buffer.getShort(104).toUShort(),
@@ -201,7 +206,7 @@ object DataParser {
             accelerometerY = buffer.getShort(52),
             accelerometerZ = buffer.getShort(54),
             timer = buffer.getInt(56).toUInt(),
-            sequenceCounter = (((buffer.get(61).toUShort().toInt() shl 8) + buffer.get(60).toUShort().toInt()) and 0x7FFF).toUShort(),
+            sequenceCounter = (((buffer.get(61).toInt() and 0xFF) shl 8) or (buffer.get(60).toInt() and 0xFF)).toUShort(),
             eventBit = (buffer.get(61).toInt() and 0x80) != 0,
             hbO2 = HalfPrecisionConverter.toFloat(buffer.getShort(62).toInt()),
             hbd = HalfPrecisionConverter.toFloat(buffer.getShort(64).toInt()),
@@ -218,19 +223,104 @@ object DataParser {
     }
 
     /**
+     * Processes Aerie device data.
+     */
+    private fun processAerieData(data: ByteArray, device: Device): List<AeriePacket> {
+        if (data.size < AERIE_PACKET_SIZE) {
+            Log.d("DataParser", "Aerie data packet size too small. Expected: $AERIE_PACKET_SIZE, Actual: ${data.size}")
+            return emptyList()
+        }
+
+        return parseAerieSegment(data, device).map { packet ->
+            packet.copy(captureTime = setCaptureTimePreviewData(packet, device))
+        }
+    }
+
+    /**
+     * Parses a segment of Aerie data into a list of AeriePacket objects.
+     */
+    private fun parseAerieSegment(packetData: ByteArray, device: Device): List<AeriePacket> {
+        val buffer = ByteBuffer.wrap(packetData)
+
+        // Big-endian for the first part
+        buffer.order(ByteOrder.BIG_ENDIAN)
+        val near740 = buffer.getShort(0).toInt() and 0xFFFF
+        val near850 = buffer.getShort(2).toInt() and 0xFFFF
+        val near940 = buffer.getShort(4).toInt() and 0xFFFF
+        val mid740 = buffer.getShort(6).toInt() and 0xFFFF
+        val mid850 = buffer.getShort(8).toInt() and 0xFFFF
+        val mid940 = buffer.getShort(10).toInt() and 0xFFFF
+        val far740 = buffer.getShort(12).toInt() and 0xFFFF
+        val far850 = buffer.getShort(14).toInt() and 0xFFFF
+        val far940 = buffer.getShort(16).toInt() and 0xFFFF
+        val ambient = buffer.getShort(18).toInt() and 0xFFFF
+
+        // Little-endian for the rest
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+        val accx = buffer.getShort(20).toInt()
+        val accy = buffer.getShort(22).toInt()
+        val accz = buffer.getShort(24).toInt()
+        val elapsedTime = buffer.getInt(26)
+        val timer = buffer.getShort(30).toLong() and 0xFFFF
+        val hbO2 = HalfPrecisionConverter.toFloat(buffer.getShort(32).toInt())
+        val hbd = HalfPrecisionConverter.toFloat(buffer.getShort(34).toInt())
+        val counter = buffer.getShort(30).toInt() and 0x7FFF
+        val eventBit = (packetData[31].toInt() shr 7) and 0x01
+        val sessionId = packetData[36].toUByte()
+        val pulseRate = packetData[37].toInt() and 0xFF
+        val respiratoryRate = packetData[38].toInt() and 0xFF
+        val spO2 = packetData[39].toInt() and 0xFF
+        val ppg = near740
+
+        val basePacket = AeriePacket(
+            deviceMacAddress = device.macAddress,
+            captureTime = PLACEHOLDER_TIMESTAMP,
+            near740 = near740,
+            near850 = near850,
+            near940 = near940,
+            mid740 = mid740,
+            mid850 = mid850,
+            mid940 = mid940,
+            far740 = far740,
+            far850 = far850,
+            far940 = far940,
+            ambient = ambient,
+            accelerometerX = accx,
+            accelerometerY = accy,
+            accelerometerZ = accz,
+            elapsedTime = elapsedTime.toLong(),
+            timer = timer,
+            hbO2 = hbO2,
+            hbd = hbd,
+            counter = counter,
+            eventBit = eventBit,
+            sessionId = sessionId,
+            pulseRate = pulseRate,
+            respiratoryRate = respiratoryRate,
+            ppg = ppg,
+            spO2 = spO2,
+            patchId = device.macAddress,
+            captureTimePreview = device.captureTimePreview?.toEpochMilli()
+        )
+
+        return listOf(basePacket)
+    }
+
+    /**
      * Sets the capture time for preview data packets.
      */
     private fun setCaptureTimePreviewData(packet: Packet, device: Device): Instant {
         val currentTimerBits = when (packet) {
             is ArgusPacket -> packet.sequenceCounter.toUInt()
             is AurelianPacket -> packet.counter.toUInt()
+            is AeriePacket -> packet.counter.toUInt()
             else -> return Instant.now()
         }
 
         val previousTimerBits = device.timerBitsPreview
 
         val timeMultiplier = if (currentTimerBits < previousTimerBits) {
-            ((ARGUS_MAX_TIMER_BITS + 1U) - previousTimerBits) + currentTimerBits
+            ((MAX_TIMER_BITS + 1U) - previousTimerBits) + currentTimerBits
         } else {
             currentTimerBits - previousTimerBits
         }
@@ -239,6 +329,7 @@ object DataParser {
             val elapsedTime = when (packet) {
                 is ArgusPacket -> packet.timer.toDouble() / if (packet.argusVersion == 2) ARGUS_2_TIME_DIVISOR else ARGUS_1_TIME_DIVISOR
                 is AurelianPacket -> packet.timeElapsed / 32768.0
+                is AeriePacket -> packet.elapsedTime.toDouble() / 32768.0
                 else -> 0.0
             }
             val nano = (elapsedTime * 1_000_000).toLong()
@@ -263,6 +354,7 @@ object DataParser {
         when (device.deviceVersionInfo.deviceFamily) {
             Device.DeviceFamily.Argus -> processArgusStoredData(data, device)
             Device.DeviceFamily.Aurelian -> processAurelianStoredData(data, device)
+            Device.DeviceFamily.Aerie -> processAerieStoredData(data, device)
             else -> Log.w("DataParser", "Unsupported device family for stored data")
         }
     }
@@ -287,6 +379,18 @@ object DataParser {
             if (data.size >= i + AURELIAN_PACKET_SIZE) {
                 val singleStorage = data.sliceArray(i until i + AURELIAN_PACKET_SIZE)
                 processAurelianStorageSegment(singleStorage, device)
+            }
+        }
+    }
+
+    /**
+     * Processes stored data from an Aerie device.
+     */
+    private suspend fun processAerieStoredData(data: ByteArray, device: Device) {
+        for (i in data.indices step AERIE_PACKET_SIZE) {
+            if (data.size >= i + AERIE_PACKET_SIZE) {
+                val singleStorage = data.sliceArray(i until i + AERIE_PACKET_SIZE)
+                processAerieStorageSegment(singleStorage, device)
             }
         }
     }
@@ -326,6 +430,23 @@ object DataParser {
     }
 
     /**
+     * Processes a single segment of stored Aerie data.
+     */
+    private suspend fun processAerieStorageSegment(singleStorage: ByteArray, device: Device) {
+        val singleComp = singleStorage.take(8).toByteArray()
+
+        when {
+            singleComp.contentEquals(END_HISTORICAL) -> {
+                Log.d("DataParser", "End packet received")
+                onTotalDownloadComplete(device)
+            }
+            singleComp.contentEquals(START_HISTORICAL) -> handleStartHistorical(singleStorage, device)
+            singleComp.contentEquals(START_TIMESTAMP) -> handleStartTimeStamp(singleStorage)
+            else -> processAerieDataSegment(singleStorage, device)
+        }
+    }
+
+    /**
      * Handles the start of historical data transmission.
      */
     private fun handleStartHistorical(singleStorage: ByteArray, device: Device) {
@@ -340,6 +461,7 @@ object DataParser {
         val devicePacketCountMultiplier = when (device.deviceVersionInfo.deviceFamily) {
             Device.DeviceFamily.Argus -> if (device.deviceVersionInfo.argusVersion >= 2) 1 else 1
             Device.DeviceFamily.Aurelian -> AURELIAN_PACKETS_PER_MESSAGE
+            Device.DeviceFamily.Aerie -> 1
             else -> 1
         }
 
@@ -386,6 +508,14 @@ object DataParser {
     }
 
     /**
+     * Processes a single Aerie data segment from stored data.
+     */
+    private suspend fun processAerieDataSegment(singleStorage: ByteArray, device: Device) {
+        val historyPacketData = parseAerieSegment(singleStorage, device).first()
+        processHistoryPacketData(historyPacketData, device)
+    }
+
+    /**
      * Processes a single history packet data.
      */
     private fun processHistoryPacketData(historyPacketData: Packet, device: Device) {
@@ -405,6 +535,7 @@ object DataParser {
         val currentTimerBits = when (packet) {
             is ArgusPacket -> packet.sequenceCounter.toUInt()
             is AurelianPacket -> packet.counter.toUInt()
+            is AeriePacket -> packet.counter.toUInt()
             else -> return initialHistoryCaptureTime ?: Instant.now()
         }
 
@@ -420,6 +551,7 @@ object DataParser {
             val elapsedTime = when (packet) {
                 is ArgusPacket -> packet.timer.toDouble() / if (packet.argusVersion == 2) ARGUS_2_TIME_DIVISOR else ARGUS_1_TIME_DIVISOR
                 is AurelianPacket -> packet.timeElapsed / 32768.0
+                is AeriePacket -> packet.elapsedTime.toDouble() / 32768.0
                 else -> 0.0
             }
             val nanos = (elapsedTime * 1_000_000_000).toLong()
