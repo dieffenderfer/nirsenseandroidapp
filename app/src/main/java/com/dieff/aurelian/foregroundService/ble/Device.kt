@@ -432,6 +432,7 @@ class Device(
                     "Battery_RSOC;Reserved8;Reserved64;$metadata\n"
         }
 
+        //TODO FIX_ME AERIE_FIX ask if I should normalize the spelling of the header values to match the other csv outputs (for example, capture time)
         private fun getAerieHeader(metadata: String): String {
             return "Index;CaptureTime;Near770ADC;Near850ADC;Near940ADC;Mid770ADC;Mid850ADC;Mid940ADC;Far770ADC;Far850ADC;Far940ADC;AmbientADC;AccelerometerX;AccelerometerY;AccelerometerZ;ElapsedTime;TimerBits;EventBit;HbO2;Hbd;SessionId;PulseRate;RespiratoryRate;SpO2;$metadata\n"
         }
