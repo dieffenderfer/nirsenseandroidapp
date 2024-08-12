@@ -20,7 +20,7 @@ object DataParser {
     private const val AURELIAN_PACKET_SIZE = 120
     private const val AURELIAN_PACKETS_PER_MESSAGE = 5
     private const val ARGUS_DATA_PACKET_SIZE = 80
-    private const val AERIE_PACKET_SIZE = 40
+    private const val AERIE_PACKET_SIZE = 40 //TODO FIX_ME AERIE_FIX Verify
     private const val MAX_TIMER_BITS = 0xFFFFFFFFU
     private const val ARGUS_1_TIME_DIVISOR = 4e6
     private const val ARGUS_2_TIME_DIVISOR = 32768.0
