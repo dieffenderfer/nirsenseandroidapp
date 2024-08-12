@@ -374,21 +374,42 @@ object BleManager : Application() {
                                 Log.d("DBG", "Received data from FIRMWARE characteristic")
                                 Log.i("DBG", "FIRMWARE value: $newMessageString")
                                 val bytes = value
-                                if (bytes.size == 3) {
+                                if (bytes.size >= 2) {
                                     val deviceFamilyNum = bytes[0].toInt()
-                                    val deviceFamily = Device.DeviceFamily.fromInt(deviceFamilyNum)
-                                    val firmwareVersion = "${bytes[1].toInt() and 0xff}.${bytes[2].toInt() and 0xff}"
+                                    var deviceFamily = Device.DeviceFamily.fromInt(deviceFamilyNum)
+                                    var firmwareVersion = ""
                                     var argusVersion: Int = 0
-                                    if (deviceFamily == Device.DeviceFamily.Argus) {
-                                        argusVersion = if (bytes[1].toInt() >= 5) 2 else 1
-                                    }
-                                    if (firmwareVersion.toDouble() >= 170.0) {
-                                        argusVersion = 2
-                                    }
 
-                                    Log.i("DBG", "FIRMWARE info: deviceFamily $deviceFamily and firmwareVersion $firmwareVersion and argusVersion $argusVersion")
                                     val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
                                     device?.let {
+                                        // Check device name for Aerie
+                                        if (!it.name.contains("Aurelian", ignoreCase = true) &&
+                                            !it.name.contains("Argus", ignoreCase = true)) {
+                                            deviceFamily = Device.DeviceFamily.Aerie
+                                            Log.i("DBG", "Device name does not contain Aurelian or Argus, setting as Aerie")
+                                        }
+
+                                        // Parse firmware version based on device family
+                                        firmwareVersion = when (deviceFamily) {
+                                            Device.DeviceFamily.Aerie -> {
+                                                if (bytes.size >= 3) {
+                                                    "${bytes[1].toInt()}.${bytes[2].toInt()}"
+                                                } else {
+                                                    Log.e("DBG", "Unexpected firmware data size for Aerie: ${bytes.size}")
+                                                    "Unknown"
+                                                }
+                                            }
+                                            else -> "${bytes[1].toInt() and 0xff}.${bytes[2].toInt() and 0xff}"
+                                        }
+
+                                        if (deviceFamily == Device.DeviceFamily.Argus) {
+                                            argusVersion = if (bytes[1].toInt() >= 5) 2 else 1
+                                            if (firmwareVersion.toDouble() >= 170.0) {
+                                                argusVersion = 2
+                                            }
+                                        }
+
+                                        Log.i("DBG", "FIRMWARE info: deviceFamily $deviceFamily and firmwareVersion $firmwareVersion and argusVersion $argusVersion")
                                         Log.i("DBG", "FIRMWARE assigning info to device, currently it is ${it.deviceVersionInfo}")
                                         val info = Device.DeviceVersionInfo(
                                             firmwareVersion,
