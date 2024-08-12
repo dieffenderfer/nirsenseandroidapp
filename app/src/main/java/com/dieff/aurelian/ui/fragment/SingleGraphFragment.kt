@@ -243,19 +243,24 @@ class SingleGraphFragment : Fragment() {
             btnCaptureBounds2.visibility = View.GONE
             btnResetAutoscale.visibility = View.GONE
             btnResetAutoscale2.visibility = View.GONE
-            btnExport.visibility = View.GONE
-            btnClear.visibility = View.GONE
+            if (currentDevice.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Argus) {
+                btnExport.visibility = View.GONE
+                btnClear.visibility = View.GONE
+            }
+
 
             //Hide app version text at the bottom
             binding.versionTextView.visibility = View.GONE
 
             //Probably not hiding these for long:
             binding.run {
-                lineChart2.visibility = View.GONE
+                if (currentDevice.deviceVersionInfo.deviceFamily != Device.DeviceFamily.Aerie) {
+                    lineChart2.visibility = View.GONE
+                }
                 digitalReadout.visibility = View.GONE
                 // Hide the "Not EEG 1" and "Not EEG 2" labels
-                labelChart1.visibility = View.GONE
-                labelChart2.visibility = View.GONE
+                labelChart1.visibility  = View.GONE
+                labelChart2.visibility  = View.GONE
                 squareChart1.visibility = View.GONE
                 squareChart2.visibility = View.GONE
             }

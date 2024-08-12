@@ -31,4 +31,4 @@ enum class AppID {
 }
 
 // Set this to configure the app as Argus or Aurelian
-var globalAppID: AppID = AppID.ANY_DEVICE_APP
+var globalAppID: AppID = AppID.AURELIAN_APP
