@@ -320,7 +320,7 @@ object BleManager : Application() {
                                 Log.d("DBG", "Received data from STORAGE characteristic")
                                 val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
                                 device?.let {
-                                    var chunkSize = if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) 120 else 80 //TODO FIX_ME Refactor this to handle different device types better. Could be something like Device.chunksize that gets set on onboarding
+                                    var chunkSize = if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) 120 else if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aerie) 40 else 80 //TODO FIX_ME Refactor this to handle different device types better. Could be something like Device.chunksize that gets set on onboarding
                                     var offset = 0
                                     while (offset < value.size) {
                                         val end = minOf(offset + chunkSize, value.size)
@@ -816,24 +816,20 @@ object BleManager : Application() {
                 // MTU negotiation and enabling notifications are handled in onServicesDiscovered
             }
             SetupState.NOTIFICATIONS_ENABLED -> {
-                if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) {
-                    requestBatteryLevel(device.bluetoothGatt)
-                } else {
-                    requestBatteryLevel(device.bluetoothGatt)
-                }
+                requestBatteryLevel(device.bluetoothGatt)
             }
             SetupState.BATTERY_RECEIVED -> {
                 stopSamplingGattInitialSetup(device.bluetoothGatt)
             }
             SetupState.SAMPLING_STOPPED -> {
-                if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) {
+                if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian || device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aerie) {
                     enablePreviewModeGatt(device.bluetoothGatt)
                 } else {
                     requestFirmwareVersion(device.bluetoothGatt)
                 }
             }
             SetupState.FIRMWARE_RECEIVED -> {
-                if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) {
+                if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian || device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aerie) {
                     enablePreviewModeGatt(device.bluetoothGatt)
                 } else if (device.deviceVersionInfo.argusVersion == 1) {
                     enablePreviewModeGatt(device.bluetoothGatt)
@@ -845,7 +841,7 @@ object BleManager : Application() {
                 enablePreviewModeGatt(device.bluetoothGatt)
             }
             SetupState.PREVIEW_MODE_ENABLED -> {
-                if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) {
+                if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian || device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aerie) {
                     enableSaveModeGatt(device.bluetoothGatt)
                 } else {
                     sendTimestamp(device.bluetoothGatt)
