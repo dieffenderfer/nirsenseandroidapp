@@ -11,12 +11,7 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.transition.Visibility
-import com.dieff.aurelian.foregroundService.ble.ArgusPacket
-import com.dieff.aurelian.foregroundService.ble.AurelianPacket
-import com.dieff.aurelian.foregroundService.ble.BleManager
-import com.dieff.aurelian.foregroundService.ble.Device
-import com.dieff.aurelian.foregroundService.ble.Packet
+import com.dieff.aurelian.foregroundService.ble.*
 import com.github.mikephil.charting.charts.LineChart
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
@@ -77,6 +72,7 @@ class SingleGraphViewModel : ViewModel() {
         when (deviceType) {
             Device.DeviceFamily.Argus -> setupArgus()
             Device.DeviceFamily.Aurelian -> setupAurelian()
+            Device.DeviceFamily.Aerie -> setupAerie()
             else -> setupDefault()
         }
     }
@@ -100,6 +96,17 @@ class SingleGraphViewModel : ViewModel() {
             ReadoutConfig("tDCS Imp", "Ω"),
             ReadoutConfig("tDCS Cur", "mA"),
             ReadoutConfig("tDCS Time", "s")
+        )
+    }
+
+    private fun setupAerie() {
+        smoothAnimation = true
+        setAnimationDelay(16L)
+        readoutConfigs = listOf(
+            ReadoutConfig("SpO2", "%"),
+            ReadoutConfig("PR", "bpm"),
+            ReadoutConfig("PPG", ""),
+            ReadoutConfig("HBD", "")
         )
     }
 
@@ -146,20 +153,28 @@ class SingleGraphViewModel : ViewModel() {
         lineChart.legend.isEnabled = false //Hide legend-- we manually drew one in the xml
         lineChart.invalidate()
 
-        //Top Chart (StO2 or EEG C1)
-        val entries1_2 = ArrayList<Entry>()
-        val dataSet1_2 = LineDataSet(entries1_2, "Data 1")
+        //Top Chart (StO2 or EEG C1 or HbO2/Hbd for Aerie)
+        val entries1 = ArrayList<Entry>()
+        val dataSet1 = LineDataSet(entries1, "Data 1")
+        dataSet1.color = Color.RED
+        dataSet1.valueTextColor = Color.RED
+        dataSet1.setDrawValues(false)
+        dataSet1.setDrawFilled(false)
+        dataSet1.setDrawCircles(false)
+        dataSet1.mode = LineDataSet.Mode.LINEAR
 
-        dataSet1_2.color = Color.BLUE
-        dataSet1_2.valueTextColor = Color.BLUE
-        dataSet1_2.setDrawValues(false)
-        dataSet1_2.setDrawFilled(false)
-        dataSet1_2.setDrawCircles(false)
-        dataSet1_2.fillColor = Color.GREEN
-        dataSet1_2.mode = LineDataSet.Mode.LINEAR
+        val entries2 = ArrayList<Entry>()
+        val dataSet2 = LineDataSet(entries2, "Data 2")
+        dataSet2.color = Color.BLUE
+        dataSet2.valueTextColor = Color.BLUE
+        dataSet2.setDrawValues(false)
+        dataSet2.setDrawFilled(false)
+        dataSet2.setDrawCircles(false)
+        dataSet2.mode = LineDataSet.Mode.LINEAR
 
         val dataSets_2 = ArrayList<ILineDataSet>()
-        dataSets_2.add(dataSet1_2)
+        dataSets_2.add(dataSet1)
+        dataSets_2.add(dataSet2)
 
         val lineData_2 = LineData(dataSets_2)
 
@@ -254,7 +269,8 @@ class SingleGraphViewModel : ViewModel() {
         val pingPongDatasets = existingDatasets.chunked(2)
 
         var existingDatasets2 = lineChart2.lineData.dataSets
-        val lineChart2Dataset = existingDatasets2[0]
+        val lineChart2Dataset1 = existingDatasets2[0]
+        val lineChart2Dataset2 = existingDatasets2[1]
 
         val pingNotPongArray = Array(6) { true }
 
@@ -268,17 +284,28 @@ class SingleGraphViewModel : ViewModel() {
 
                 for (graphPacket in graphPackets) {
                     //drifting graph / graph 2
-                    val newEntry2 = when (graphPacket) {
-                        is ArgusPacket -> Entry(everIncreasingX, graphPacket.stO2.toFloat())
-                        is AurelianPacket -> Entry(everIncreasingX, graphPacket.eegC1.toFloat())
-                        else -> null
+                    when (graphPacket) {
+                        is ArgusPacket -> {
+                            val newEntry = Entry(everIncreasingX, graphPacket.stO2.toFloat())
+                            lineChart2Dataset1.addEntry(newEntry)
+                        }
+                        is AurelianPacket -> {
+                            val newEntry = Entry(everIncreasingX, graphPacket.eegC1.toFloat())
+                            lineChart2Dataset1.addEntry(newEntry)
+                        }
+                        is AeriePacket -> {
+                            val newEntryHbO2 = Entry(everIncreasingX, graphPacket.hbO2)
+                            lineChart2Dataset1.addEntry(newEntryHbO2)
+                            val newEntryHbd = Entry(everIncreasingX, graphPacket.hbd)
+                            lineChart2Dataset2.addEntry(newEntryHbd)
+                        }
                     }
-                    newEntry2?.let { lineChart2Dataset.addEntry(it) }
                     everIncreasingX += 1
                     everIncreasingUpperBound += 1
 
-                    if (lineChart2Dataset.entryCount > xMax) {
-                        lineChart2Dataset.removeFirst()
+                    if (lineChart2Dataset1.entryCount > xMax) {
+                        lineChart2Dataset1.removeFirst()
+                        lineChart2Dataset2.removeFirst()
                         everIncreasingLowerBound += 1
                     }
 
@@ -290,6 +317,7 @@ class SingleGraphViewModel : ViewModel() {
                     val datasetCount = when (graphPacket) {
                         is ArgusPacket -> 1
                         is AurelianPacket -> 6
+                        is AeriePacket -> 1
                         else -> 0
                     }
 
@@ -314,6 +342,7 @@ class SingleGraphViewModel : ViewModel() {
                                     5 -> graphPacket.eegC6.toFloat()
                                     else -> 0f
                                 })
+                                is AeriePacket -> Entry(pingDataset.entryCount.toFloat(), graphPacket.ppg.toFloat())
                                 else -> null
                             }
                             newEntry?.let {
@@ -341,6 +370,7 @@ class SingleGraphViewModel : ViewModel() {
                                         5 -> graphPacket.eegC6.toFloat()
                                         else -> 0f
                                     })
+                                    is AeriePacket -> Entry(pingDataset.entryCount.toFloat(), graphPacket.ppg.toFloat())
                                     else -> null
                                 }
                                 newEntry?.let {
@@ -370,6 +400,7 @@ class SingleGraphViewModel : ViewModel() {
                                         5 -> graphPacket.eegC6.toFloat()
                                         else -> 0f
                                     })
+                                    is AeriePacket -> Entry(pongDataset.entryCount.toFloat(), graphPacket.ppg.toFloat())
                                     else -> null
                                 }
                                 newEntry?.let {
@@ -462,6 +493,12 @@ class SingleGraphViewModel : ViewModel() {
                 readoutBox2Middle.text = if (packet.tdcsImpedance == 0u.toUShort()) "--" else packet.tdcsImpedance.toString()
                 readoutBox3Middle.text = if (packet.tdcsCurrent == 0u.toUShort()) "--" else packet.tdcsCurrent.toString()
                 readoutBox4Middle.text = if (packet.tdcsOnTime == 0u.toUShort()) "--" else packet.tdcsOnTime.toString()
+            }
+            is AeriePacket -> {
+                readoutBox1Middle.text = if (packet.spO2 == 0) "--" else packet.spO2.toString()
+                readoutBox2Middle.text = if (packet.pulseRate == 0) "--" else packet.pulseRate.toString()
+                readoutBox3Middle.text = if (packet.ppg == 0) "--" else packet.ppg.toString()
+                readoutBox4Middle.text = if (packet.hbd == 0f) "--" else String.format("%.2f", packet.hbd)
             }
         }
     }
