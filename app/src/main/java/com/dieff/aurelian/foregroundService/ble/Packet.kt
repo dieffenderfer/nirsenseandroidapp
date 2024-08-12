@@ -94,3 +94,38 @@ data class AurelianPacket(
     val reserved8: UByte,
     val reserved64: ULong
 ) : Packet(deviceMacAddress, captureTime, sessionId)
+
+
+/**
+ * Represents a data packet from an Aerie device.
+ */
+data class AeriePacket(
+    override val deviceMacAddress: Long,
+    override var captureTime: Instant,
+    val near740: Int,
+    val near850: Int,
+    val near940: Int,
+    val mid740: Int,
+    val mid850: Int,
+    val mid940: Int,
+    val far740: Int,
+    val far850: Int,
+    val far940: Int,
+    val ambient: Int,
+    val accelerometerX: Int,
+    val accelerometerY: Int,
+    val accelerometerZ: Int,
+    val elapsedTime: Long,
+    val timer: Long,
+    val hbO2: Float,
+    val hbd: Float,
+    val counter: Int,
+    val eventBit: Int,
+    override val sessionId: UByte,
+    val pulseRate: Int,
+    val respiratoryRate: Int,
+    val ppg: Int,
+    val spO2: Int,
+    val patchId: Long,
+    val captureTimePreview: Long?
+) : Packet(deviceMacAddress, captureTime, sessionId)
