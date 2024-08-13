@@ -24,6 +24,10 @@ object DataParser {
     private const val MAX_TIMER_BITS = 32767u
     private const val ARGUS_1_TIME_DIVISOR = 125000.0
     private const val ARGUS_2_TIME_DIVISOR = 32768.0
+
+    private const val AERIE_TIME_DIVISOR = 125000.0
+    private const val AURELIAN_TIME_DIVISOR = 32768.0
+
     private val PLACEHOLDER_TIMESTAMP = Instant.EPOCH
     private val DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS").withZone(ZoneOffset.UTC)
 
@@ -328,8 +332,8 @@ object DataParser {
         val captureTime = if (timeMultiplier == 1U) {
             val elapsedTime = when (packet) {
                 is ArgusPacket -> packet.timer.toDouble() / if (packet.argusVersion == 2) ARGUS_2_TIME_DIVISOR else ARGUS_1_TIME_DIVISOR
-                is AurelianPacket -> packet.timeElapsed / 32768.0
-                is AeriePacket -> packet.elapsedTime.toDouble() / 32768.0
+                is AurelianPacket -> packet.timeElapsed / AURELIAN_TIME_DIVISOR
+                is AeriePacket -> packet.elapsedTime.toDouble() / AERIE_TIME_DIVISOR
                 else -> 0.0
             }
             val nano = (elapsedTime * 1_000_000).toLong()

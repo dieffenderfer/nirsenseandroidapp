@@ -498,10 +498,3 @@ class Device(
         }
     }
 }
-
-// Constants
-const val ARGUS_1_TIME_DIVISOR = 125000.0
-const val ARGUS_2_TIME_DIVISOR = 32768.0
-const val ARGUS_MAX_TIMER_BITS = 32767u
-const val ARGUS_DATA_PACKET_SIZE = 80
-const val AERIE_DATA_PACKET_SIZE = 40
