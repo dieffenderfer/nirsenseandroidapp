@@ -21,8 +21,8 @@ object DataParser {
     private const val AURELIAN_PACKETS_PER_MESSAGE = 5
     private const val ARGUS_DATA_PACKET_SIZE = 80
     private const val AERIE_PACKET_SIZE = 40 //TODO FIX_ME AERIE_FIX Verify
-    private const val MAX_TIMER_BITS = 0xFFFFFFFFU
-    private const val ARGUS_1_TIME_DIVISOR = 4e6
+    private const val MAX_TIMER_BITS = 32767u
+    private const val ARGUS_1_TIME_DIVISOR = 125000.0
     private const val ARGUS_2_TIME_DIVISOR = 32768.0
     private val PLACEHOLDER_TIMESTAMP = Instant.EPOCH
     private val DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS").withZone(ZoneOffset.UTC)
@@ -103,8 +103,8 @@ object DataParser {
             accelerometerY = buffer.getShort(92),
             accelerometerZ = buffer.getShort(94),
             timeElapsed = buffer.getInt(96).toDouble() / 5.0,
-            counter = (((buffer.get(101).toInt() and 0xFF) shl 8) or (buffer.get(100).toInt() and 0xFF)) and 0x7FFF,
-            marker = (buffer.get(101).toInt() and 0x80) != 0,
+            counter = (buffer.getShort(100).toInt() and 0x7FFF) * 5,
+            marker = (buffer.getShort(100).toInt() and 0x8000) != 0,
             sessionId = buffer.get(102).toUByte(),
             pulseRate = buffer.get(103).toUByte(),
             tdcsImpedance = buffer.getShort(104).toUShort(),
@@ -206,7 +206,7 @@ object DataParser {
             accelerometerY = buffer.getShort(52),
             accelerometerZ = buffer.getShort(54),
             timer = buffer.getInt(56).toUInt(),
-            sequenceCounter = (((buffer.get(61).toInt() and 0xFF) shl 8) or (buffer.get(60).toInt() and 0xFF)).toUShort(),
+            sequenceCounter = (((buffer.get(61).toUShort().toInt() shl 8) + buffer.get(60).toUShort().toInt()) and 0x7FFF).toUShort(),
             eventBit = (buffer.get(61).toInt() and 0x80) != 0,
             hbO2 = HalfPrecisionConverter.toFloat(buffer.getShort(62).toInt()),
             hbd = HalfPrecisionConverter.toFloat(buffer.getShort(64).toInt()),
@@ -270,7 +270,7 @@ object DataParser {
         val pulseRate = packetData[37].toInt() and 0xFF
         val respiratoryRate = packetData[38].toInt() and 0xFF
         val spO2 = packetData[39].toInt() and 0xFF
-        val ppg = near740
+        val ppg = near740 //TODO FIX_ME AERIE_FIX verify
 
         val basePacket = AeriePacket(
             deviceMacAddress = device.macAddress,
@@ -362,7 +362,7 @@ object DataParser {
     /**
      * Processes stored data from an Argus device.
      */
-    private suspend fun processArgusStoredData(data: ByteArray, device: Device) {
+    private fun processArgusStoredData(data: ByteArray, device: Device) {
         for (i in data.indices step ARGUS_DATA_PACKET_SIZE) {
             if (data.size >= i + ARGUS_DATA_PACKET_SIZE) {
                 val singleStorage = data.sliceArray(i until i + ARGUS_DATA_PACKET_SIZE)
@@ -374,7 +374,7 @@ object DataParser {
     /**
      * Processes stored data from an Aurelian device.
      */
-    private suspend fun processAurelianStoredData(data: ByteArray, device: Device) {
+    private fun processAurelianStoredData(data: ByteArray, device: Device) {
         for (i in data.indices step AURELIAN_PACKET_SIZE) {
             if (data.size >= i + AURELIAN_PACKET_SIZE) {
                 val singleStorage = data.sliceArray(i until i + AURELIAN_PACKET_SIZE)
@@ -386,7 +386,7 @@ object DataParser {
     /**
      * Processes stored data from an Aerie device.
      */
-    private suspend fun processAerieStoredData(data: ByteArray, device: Device) {
+    private fun processAerieStoredData(data: ByteArray, device: Device) {
         for (i in data.indices step AERIE_PACKET_SIZE) {
             if (data.size >= i + AERIE_PACKET_SIZE) {
                 val singleStorage = data.sliceArray(i until i + AERIE_PACKET_SIZE)
@@ -398,7 +398,7 @@ object DataParser {
     /**
      * Processes a single segment of stored Argus data.
      */
-    private suspend fun processArgusStorageSegment(singleStorage: ByteArray, device: Device) {
+    private fun processArgusStorageSegment(singleStorage: ByteArray, device: Device) {
         val singleComp = singleStorage.take(8).toByteArray()
 
         when {
@@ -415,7 +415,7 @@ object DataParser {
     /**
      * Processes a single segment of stored Aurelian data.
      */
-    private suspend fun processAurelianStorageSegment(singleStorage: ByteArray, device: Device) {
+    private fun processAurelianStorageSegment(singleStorage: ByteArray, device: Device) {
         val singleComp = singleStorage.take(8).toByteArray()
 
         when {
@@ -432,7 +432,7 @@ object DataParser {
     /**
      * Processes a single segment of stored Aerie data.
      */
-    private suspend fun processAerieStorageSegment(singleStorage: ByteArray, device: Device) {
+    private fun processAerieStorageSegment(singleStorage: ByteArray, device: Device) {
         val singleComp = singleStorage.take(8).toByteArray()
 
         when {
@@ -492,7 +492,7 @@ object DataParser {
     /**
      * Processes a single Argus data segment from stored data.
      */
-    private suspend fun processArgusDataSegment(singleStorage: ByteArray, device: Device) {
+    private fun processArgusDataSegment(singleStorage: ByteArray, device: Device) {
         val historyPacketData = parseArgusSegment(singleStorage, device)
         processHistoryPacketData(historyPacketData, device)
     }
@@ -500,7 +500,7 @@ object DataParser {
     /**
      * Processes a single Aurelian data segment from stored data.
      */
-    private suspend fun processAurelianDataSegment(singleStorage: ByteArray, device: Device) {
+    private fun processAurelianDataSegment(singleStorage: ByteArray, device: Device) {
         val historyPacketDataList = parseAurelianSegment(singleStorage, device)
         historyPacketDataList.forEach { historyPacketData ->
             processHistoryPacketData(historyPacketData, device)
@@ -510,7 +510,7 @@ object DataParser {
     /**
      * Processes a single Aerie data segment from stored data.
      */
-    private suspend fun processAerieDataSegment(singleStorage: ByteArray, device: Device) {
+    private fun processAerieDataSegment(singleStorage: ByteArray, device: Device) {
         val historyPacketData = parseAerieSegment(singleStorage, device).first()
         processHistoryPacketData(historyPacketData, device)
     }

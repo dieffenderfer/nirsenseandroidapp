@@ -46,6 +46,10 @@ class Device(
     var captureTimeStored: Instant? = null
     var timerBitsStored: UInt = 0u
 
+    //For Index value in CSV
+    var previewIndex: Int = 0
+    var storedIndex: Int = 0
+
     var battery: Int = -1
 
     private val _connectionStatus = MutableStateFlow(ConnectionStatus.DISCONNECTED)
@@ -240,28 +244,44 @@ class Device(
             if (isPreview) {
                 dbAggregateArrayGraphing[currentIndexGraphing] = packet
                 currentIndexGraphing = (currentIndexGraphing + 1) % ARRAY_SIZE_GRAPHING
+
+
+                dbAggregateArraySaving[currentIndexSaving] = packet
+                currentIndexSaving++
+
+                if (currentIndexSaving >= ARRAY_SIZE_SAVING) {
+                    saveToCSV(dbAggregateArraySaving, false)
+                    currentIndexSaving = 0
+                }
             }
 
-            dbAggregateArraySaving[currentIndexSaving] = packet
-            currentIndexSaving++
-
-            if (currentIndexSaving >= ARRAY_SIZE_SAVING) {
-                saveToCSV(dbAggregateArraySaving)
-                currentIndexSaving = 0
+            else {
+                saveToCSV(dbAggregateArraySaving, true)
             }
 
             return packet
         }
 
-        private fun saveToCSV(data: Array<Packet?>) {
+        private fun saveToCSV(data: Array<Packet?>, isStoredData: Boolean) {
+
+            var file: String = filename
+
+            if (isStoredData) {
+                file = historyFilename
+            }
+
+            else {
+                file = filename
+            }
+
             csvLock.withLock {
-                val filePath = findOrCreateFile(filename, data.firstOrNull(), metadataText)
+                val filePath = findOrCreateFile(file, data.firstOrNull(), metadataText)
                 if (filePath != null) {
                     try {
                         FileWriter(filePath, true).use { writer ->
                             data.forEach { packet ->
                                 if (packet != null) {
-                                    writer.write(buildCsvLine(packet))
+                                    writer.write(buildCsvLine(packet, isStoredData))
                                 }
                             }
                         }
@@ -274,19 +294,30 @@ class Device(
             }
         }
 
-        private fun buildCsvLine(packet: Packet): String {
+        private fun buildCsvLine(packet: Packet, isStoredData: Boolean): String {
             csvLineBuilder.clear()
             when (packet) {
-                is ArgusPacket -> appendArgusCsvLine(csvLineBuilder, packet)
-                is AurelianPacket -> appendAurelianCsvLine(csvLineBuilder, packet)
-                is AeriePacket -> appendAerieCsvLine(csvLineBuilder, packet)
+                is ArgusPacket -> appendArgusCsvLine(csvLineBuilder, packet, isStoredData)
+                is AurelianPacket -> appendAurelianCsvLine(csvLineBuilder, packet, isStoredData)
+                is AeriePacket -> appendAerieCsvLine(csvLineBuilder, packet, isStoredData)
                 else -> Log.w("DeviceDataAggregator", "Unknown packet type: ${packet::class.simpleName}")
             }
             return csvLineBuilder.toString()
         }
 
-        private fun appendArgusCsvLine(sb: StringBuilder, packet: ArgusPacket) {
-            sb.append(packet.captureTime).append(';')
+        private fun appendArgusCsvLine(sb: StringBuilder, packet: ArgusPacket, isStoredData: Boolean) {
+            var csvIndex = 0
+
+            if (isStoredData) {
+                storedIndex++
+                csvIndex = storedIndex
+            }
+            else {
+                previewIndex++
+                csvIndex = previewIndex
+            }
+            sb.append(csvIndex).append(';')
+                .append(packet.captureTime).append(';')
                 .append(packet.mm660_8).append(';')
                 .append(packet.mm660_30).append(';')
                 .append(packet.mm660_35).append(';')
@@ -331,8 +362,20 @@ class Device(
                 .append(packet.reserved32).append('\n')
         }
 
-        private fun appendAurelianCsvLine(sb: StringBuilder, packet: AurelianPacket) {
-            sb.append(packet.captureTime).append(';')
+        private fun appendAurelianCsvLine(sb: StringBuilder, packet: AurelianPacket, isStoredData: Boolean) {
+
+            var csvIndex = 0
+
+            if (isStoredData) {
+                storedIndex++
+                csvIndex = storedIndex
+            }
+            else {
+                previewIndex++
+                csvIndex = previewIndex
+            }
+            sb.append(csvIndex).append(';')
+                .append(packet.captureTime).append(';')
                 .append(packet.eegC1).append(';')
                 .append(packet.eegC2).append(';')
                 .append(packet.eegC3).append(';')
@@ -355,8 +398,20 @@ class Device(
                 .append(packet.reserved64).append('\n')
         }
 
-        private fun appendAerieCsvLine(sb: StringBuilder, packet: AeriePacket) {
-            sb.append(packet.captureTime).append(';')
+        private fun appendAerieCsvLine(sb: StringBuilder, packet: AeriePacket, isStoredData: Boolean) {
+
+            var csvIndex = 0
+
+            if (isStoredData) {
+                storedIndex++
+                csvIndex = storedIndex
+            }
+            else {
+                previewIndex++
+                csvIndex = previewIndex
+            }
+            sb.append(csvIndex).append(';')
+            .append(packet.captureTime).append(';')
                 .append(packet.near740).append(';')
                 .append(packet.near850).append(';')
                 .append(packet.near940).append(';')

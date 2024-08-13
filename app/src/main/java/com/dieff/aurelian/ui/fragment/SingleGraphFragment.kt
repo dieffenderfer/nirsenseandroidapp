@@ -28,6 +28,7 @@ import androidx.navigation.fragment.navArgs
 import com.dieff.aurelian.AppConfig
 import com.dieff.aurelian.databinding.FragmentSingleGraphBinding
 import com.dieff.aurelian.foregroundService.ble.BleManager
+import com.dieff.aurelian.foregroundService.ble.BleManager.sanitizeFilename
 import com.dieff.aurelian.foregroundService.ble.Device
 import com.dieff.aurelian.ui.viewmodel.SingleGraphViewModel
 import com.github.mikephil.charting.charts.LineChart
@@ -205,6 +206,13 @@ class SingleGraphFragment : Fragment() {
             btnExport.setOnClickListener {
                 checkStreamingAndExecute {
                     showConfirmationDialog("Export Flash", "Are you ready to export the flash data from the device to the app?") {
+
+
+                        currentDevice.storedIndex = 0
+                        val currentDateString = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", java.util.Locale.US).format(java.util.Date())
+                        val newfilename = sanitizeFilename("${currentDevice.name}_${currentDateString}_stored")
+
+                        currentDevice.historyFilename = newfilename
                         singleGraphViewModel.exportFlashData()
                     }
                 }
@@ -324,7 +332,7 @@ class SingleGraphFragment : Fragment() {
                     else 0
 
                     progressBar.progress = progressPercent
-                    Log.d("DBG", "progressPercent = $progressPercent")
+                    //Log.d("DBG", "progressPercent = $progressPercent")
 
                     if (currentDevice.currentPacketv2.value >= currentDevice.totalPackets.value) {
                         progressText.text = "Transfer is complete!\n\n${currentDevice.currentPacketv2.value} / ${currentDevice.totalPackets.value} ✅\n\nThe data is located at Documents/NIRSense/${currentDevice.historyFilename}.csv"
