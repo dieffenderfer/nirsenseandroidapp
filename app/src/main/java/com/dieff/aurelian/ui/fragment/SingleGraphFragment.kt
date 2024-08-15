@@ -32,6 +32,7 @@ import com.dieff.aurelian.foregroundService.ble.BleManager.sanitizeFilename
 import com.dieff.aurelian.foregroundService.ble.Device
 import com.dieff.aurelian.ui.viewmodel.SingleGraphViewModel
 import com.github.mikephil.charting.charts.LineChart
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 class SingleGraphFragment : Fragment() {
@@ -170,6 +171,7 @@ class SingleGraphFragment : Fragment() {
                 launch {
                     currentDevice.isDownloadComplete.collect { isComplete ->
                         if (isComplete) {
+                            delay(100)
                             onDownloadComplete(currentDevice)
                             currentDevice.setDownloadComplete(false)
                         }
@@ -358,7 +360,7 @@ class SingleGraphFragment : Fragment() {
 
     private fun onDownloadComplete(device: Device) {
         _binding?.apply {
-            progressText.text = "Transfer is complete!\n\n${device.currentPacketv2.value} / ${device.totalPackets.value} ✅\n\nThe data is located at Documents/NIRSense/${device.historyFilename}.csv"
+            progressText.text = "Transfer is complete!\n\n${device.currentPacketv2.value} packets downloaded. ✅\n\nThe data is located at Documents/NIRSense/${device.historyFilename}.csv"
             dismissButton.visibility = View.VISIBLE
         }
 

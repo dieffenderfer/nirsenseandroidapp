@@ -1,22 +1,26 @@
 package com.dieff.aurelian.foregroundService.data.manager
 
 import android.annotation.SuppressLint
+import android.os.Environment
 import android.util.Log
 import com.dieff.aurelian.BuildConfig
 import com.dieff.aurelian.foregroundService.ble.*
+import java.io.File
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.*
+import kotlin.concurrent.schedule
 
 /**
  * Object responsible for parsing and processing data from NIRSense devices.
  * Handles both preview (live) data and stored historical data.
  */
+
 object DataParser {
-    private const val MAX_PACKETS_PER_PROCESS = 20 // Limit to avoid memory issues
     private const val AURELIAN_PACKET_SIZE = 120
     private const val AURELIAN_PACKETS_PER_MESSAGE = 5
     private const val ARGUS_DATA_PACKET_SIZE = 80
@@ -37,6 +41,16 @@ object DataParser {
     private val START_TIMESTAMP = byteArrayOf(0x01, 0x03, 0x05, 0x07, 0x09, 0x0b, 0x0d, 0x0f)
 
     private var initialHistoryCaptureTime: Instant? = null
+    private lateinit var historyFile: File
+    private val csvDataBuilder = StringBuilder()
+    private const val CSV_BUFFER_SIZE = 10000
+    private var csvLineCount = 0
+
+    private var historyInactivityTimer: Timer? = null
+    private const val HISTORY_INACTIVITY_TIMER_MS = 5000L
+
+    private var readyForNewHistoryFile = true
+
 
     /**
      * Processes preview (live) data from a device.
@@ -66,13 +80,9 @@ object DataParser {
             }
         }
 
-        when {
-            packets.isEmpty() -> Log.d("DataParser", "No packets to process")
-            packets.size <= MAX_PACKETS_PER_PROCESS -> {
-                device.dataAggregator.aggregatePreviewData(packets)
-                Log.d("DataParser", "Aggregated ${packets.size} preview data packets")
-            }
-            else -> Log.w("DataParser", "Packet count exceeds limit. Skipping ${packets.size} packets.")
+        if (packets.isNotEmpty()) {
+            device.dataAggregator.aggregatePreviewData(packets)
+            Log.d("DataParser", "Aggregated ${packets.size} preview data packets")
         }
 
         if (BuildConfig.DEBUG_BLE) {
@@ -226,6 +236,7 @@ object DataParser {
         )
     }
 
+
     /**
      * Processes Aerie device data.
      */
@@ -317,7 +328,6 @@ object DataParser {
         val currentTimerBits = when (packet) {
             is ArgusPacket -> packet.sequenceCounter.toUInt()
             is AurelianPacket -> packet.counter.toUInt()
-            is AeriePacket -> packet.counter.toUInt()
             else -> return Instant.now()
         }
 
@@ -333,7 +343,6 @@ object DataParser {
             val elapsedTime = when (packet) {
                 is ArgusPacket -> packet.timer.toDouble() / if (packet.argusVersion == 2) ARGUS_2_TIME_DIVISOR else ARGUS_1_TIME_DIVISOR
                 is AurelianPacket -> packet.timeElapsed / AURELIAN_TIME_DIVISOR
-                is AeriePacket -> packet.elapsedTime.toDouble() / AERIE_TIME_DIVISOR
                 else -> 0.0
             }
             val nano = (elapsedTime * 1_000_000).toLong()
@@ -355,12 +364,76 @@ object DataParser {
     fun processStoredData(data: ByteArray, device: Device) {
         Log.d("DataParser", "Processing stored data")
 
+        historyInactivityTimer?.cancel()
+        historyInactivityTimer = null
+
+        if (readyForNewHistoryFile) {
+            readyForNewHistoryFile = false
+            initHistoryFile(device)
+        }
+
         when (device.deviceVersionInfo.deviceFamily) {
             Device.DeviceFamily.Argus -> processArgusStoredData(data, device)
             Device.DeviceFamily.Aurelian -> processAurelianStoredData(data, device)
-            Device.DeviceFamily.Aerie -> processAerieStoredData(data, device)
             else -> Log.w("DataParser", "Unsupported device family for stored data")
         }
+
+        historyInactivityTimer = Timer("HistoryInactivityTimer", false)
+        historyInactivityTimer?.schedule(HISTORY_INACTIVITY_TIMER_MS) {
+            onHistoryInactivityTimeout(device)
+        }
+    }
+
+    private fun initHistoryFile(device: Device) {
+        Log.d("DataParser", "Initializing history file")
+        val directory = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS),
+            "NIRSense"
+        )
+        if (!directory.exists()) {
+            directory.mkdirs()
+        }
+
+        historyFile = File(directory, device.historyFilename)
+
+        device.captureTimeStored = null
+        device.timerBitsStored = 0u
+
+        if (!historyFile.exists()) {
+            historyFile.createNewFile()
+
+            val header = when (device.deviceVersionInfo.deviceFamily) {
+                Device.DeviceFamily.Aurelian -> getAurelianHeader(device.metadataText)
+                Device.DeviceFamily.Argus -> getArgusHeader(device.metadataText)
+                else -> throw IllegalArgumentException("Unsupported device family: ${device.deviceVersionInfo.deviceFamily}")
+            }
+
+            historyFile.writeText(header)
+            Log.d("DataParser", "Created history file: ${historyFile.absolutePath}")
+        }
+
+        device.setCurrentPacketv2(0)
+    }
+
+    private fun sanitizeFilename(filename: String): String {
+        val illegalChars = "[/\\\\:*?\"<>|]".toRegex()
+        var sanitized = filename.replace(illegalChars, "_")
+        sanitized = sanitized.trim().trimStart('.').trimEnd('.')
+        return sanitized.take(255)
+    }
+
+    private fun getArgusHeader(metadata: String): String {
+        return "Index;Capture Time;660-8mm;660-30mm;660-35mm;660-40mm;735-8mm;735-30mm;735-35mm;735-40mm;" +
+                "810-8mm;810-30mm;810-35mm;810-40mm;850-8mm;850-30mm;850-35mm;850-40mm;890-8mm;890-30mm;" +
+                "890-35mm;890-40mm;Ambient-8mm;Ambient-30mm;Ambient-35mm;Ambient-40mm;Temperature;AccelX;" +
+                "AccelY;AccelZ;Time_Elapsed;Counter;Marker;HBO2;HBD;Session;Pulse_Rate;Respiratory_Rate;" +
+                "SpO2;PPG;StO2;Reserved8;Reserved16;Reserved32;$metadata\n"
+    }
+
+    private fun getAurelianHeader(metadata: String): String {
+        return "Index;Capture Time;EEG_C1;EEG_C2;EEG_C3;EEG_C4;EEG_C5;EEG_C6;AccelX;AccelY;AccelZ;" +
+                "Time_Elapsed;Counter;Marker;Session;Pulse_Rate;tDCS_Impedance;tDCS_Current;tDCS_On_Time;" +
+                "Battery_RSOC;Reserved8;Reserved64;$metadata\n"
     }
 
     /**
@@ -416,6 +489,7 @@ object DataParser {
         }
     }
 
+
     /**
      * Processes a single segment of stored Aurelian data.
      */
@@ -455,17 +529,17 @@ object DataParser {
      */
     private fun handleStartHistorical(singleStorage: ByteArray, device: Device) {
         Log.d("DataParser", "Start packet received")
-        device.captureTimeStored = null
-        device.timerBitsStored = 0u
-        device.historyIndex = 1
+        resetCaptureTimeVariables(device)
 
-        val packetCount = ByteBuffer.wrap(singleStorage.sliceArray(8 until 12))
-            .order(ByteOrder.LITTLE_ENDIAN).int
+        val packetCountBytes = singleStorage.sliceArray(8 until 12)
+        val packetCount = (packetCountBytes[3].toInt() and 0xFF shl 24) or
+                (packetCountBytes[2].toInt() and 0xFF shl 16) or
+                (packetCountBytes[1].toInt() and 0xFF shl 8) or
+                (packetCountBytes[0].toInt() and 0xFF)
 
         val devicePacketCountMultiplier = when (device.deviceVersionInfo.deviceFamily) {
             Device.DeviceFamily.Argus -> if (device.deviceVersionInfo.argusVersion >= 2) 1 else 1
             Device.DeviceFamily.Aurelian -> AURELIAN_PACKETS_PER_MESSAGE
-            Device.DeviceFamily.Aerie -> 1
             else -> 1
         }
 
@@ -526,10 +600,16 @@ object DataParser {
         val captureTime = setCaptureTimeStoredData(historyPacketData, device)
         historyPacketData.captureTime = captureTime
 
-        device.dataAggregator.aggregateStoredData(listOf(historyPacketData))
+        val captureTimeString = DATE_TIME_FORMATTER.format(captureTime)
+        csvDataBuilder.append(buildCsvLine(device.historyIndex, captureTimeString, historyPacketData))
 
         device.historyIndex++
+        csvLineCount++
         device.setCurrentPacketv2(device.currentPacketv2.value + 1)
+
+        if (csvLineCount >= CSV_BUFFER_SIZE) {
+            writeBufferToFile()
+        }
     }
 
     /**
@@ -539,43 +619,115 @@ object DataParser {
         val currentTimerBits = when (packet) {
             is ArgusPacket -> packet.sequenceCounter.toUInt()
             is AurelianPacket -> packet.counter.toUInt()
-            is AeriePacket -> packet.counter.toUInt()
-            else -> return initialHistoryCaptureTime ?: Instant.now() // Fallback if packet type is unknown
+            else -> return initialHistoryCaptureTime ?: Instant.now()
         }
 
         val previousTimerBits = device.timerBitsStored ?: currentTimerBits
+        val timeMultiplier = 1U // Assuming no dropped packets for stored data
 
-//        var timeMultiplier = if (currentTimerBits < previousTimerBits) {
-//            ((MAX_TIMER_BITS + 1U) - previousTimerBits) + currentTimerBits
-//        } else {
-//            currentTimerBits - previousTimerBits
-//        }
-
-        // This is a temporary measure, but
-        // We aren't really anticipating dropped packets for stored data transfer //TODO FIX_ME
-        var timeMultiplier = 1U
-
-        val captureTime = if (timeMultiplier == 1U) { // If no dropped packets
+        val captureTime = if (timeMultiplier == 1U) {
             val elapsedTime = when (packet) {
                 is ArgusPacket -> packet.timer.toDouble() / if (packet.argusVersion == 2) ARGUS_2_TIME_DIVISOR else ARGUS_1_TIME_DIVISOR
-                is AurelianPacket -> (packet.timeElapsed / AURELIAN_TIME_DIVISOR)
-                is AeriePacket -> (packet.elapsedTime.toDouble() / AERIE_TIME_DIVISOR)
+                is AurelianPacket -> packet.timeElapsed / AURELIAN_TIME_DIVISOR
                 else -> 0.0
             }
-            val realms = (elapsedTime).toDouble()
-            val realmsdiv4 = (realms)
-            val realmsdivnano = (realmsdiv4  * 1000000000).toLong()
-            device.captureTimeStored?.plusNanos(realmsdivnano) ?: initialHistoryCaptureTime ?: Instant.now() //Instant.now in case of emergency, in case we never received an initial timestamp and need something to work with
+            val nanos = (elapsedTime * 1_000_000_000).toLong()
+            device.captureTimeStored?.plusNanos(nanos) ?: initialHistoryCaptureTime ?: Instant.now()
         } else {
             Log.w("DataParser", "Unexpected time multiplier for stored data: $timeMultiplier")
             device.captureTimeStored ?: initialHistoryCaptureTime ?: Instant.now()
         }
 
-        // Update device with new capture time and timer bits
         device.captureTimeStored = captureTime
         device.timerBitsStored = currentTimerBits
 
         return captureTime
+    }
+
+    private fun buildCsvLine(index: Int, captureTimeString: String, packet: Packet): String {
+        return when (packet) {
+            is ArgusPacket -> buildArgusCsvLine(index, captureTimeString, packet)
+            is AurelianPacket -> buildAurelianCsvLine(index, captureTimeString, packet)
+            is AeriePacket -> buildAerieCsvLine(index, captureTimeString, packet)
+            else -> throw IllegalArgumentException("Unknown packet type")
+        }
+    }
+
+    private fun buildArgusCsvLine(index: Int, captureTimeString: String, packet: ArgusPacket): String {
+        return buildString {
+            append("$index;$captureTimeString;")
+            append("${packet.mm660_8};${packet.mm660_30};${packet.mm660_35};${packet.mm660_40};")
+            append("${packet.mm735_8};${packet.mm735_30};${packet.mm735_35};${packet.mm735_40};")
+            append("${packet.mm810_8};${packet.mm810_30};${packet.mm810_35};${packet.mm810_40};")
+            append("${packet.mm850_8};${packet.mm850_30};${packet.mm850_35};${packet.mm850_40};")
+            append("${packet.mm890_8};${packet.mm890_30};${packet.mm890_35};${packet.mm890_40};")
+            append("${packet.mmAmbient_8};${packet.mmAmbient_30};${packet.mmAmbient_35};${packet.mmAmbient_40};")
+            append("${packet.temperature};")
+            append("${packet.accelerometerX};${packet.accelerometerY};${packet.accelerometerZ};")
+            append("${packet.timer};${packet.sequenceCounter};")
+            append("${if (packet.eventBit) "TRUE" else "FALSE"};")
+            append("${packet.hbO2};${packet.hbd};${packet.sessionId};")
+            append("${packet.pulseRate};${packet.respiratoryRate};${packet.spO2};")
+            append("${packet.ppgWaveform};${packet.stO2};")
+            append("${packet.reserved8};${packet.reserved16};${packet.reserved32}")
+            appendLine()
+        }
+    }
+
+    private fun buildAurelianCsvLine(index: Int, captureTimeString: String, packet: AurelianPacket): String {
+        return buildString {
+            append("$index;$captureTimeString;")
+            append("${packet.eegC1};${packet.eegC2};${packet.eegC3};${packet.eegC4};${packet.eegC5};${packet.eegC6};")
+            append("${packet.accelerometerX};${packet.accelerometerY};${packet.accelerometerZ};")
+            append("${packet.timeElapsed};${packet.counter};")
+            append("${if (packet.marker) "TRUE" else "FALSE"};")
+            append("${packet.sessionId};${packet.pulseRate};")
+            append("${packet.tdcsImpedance};${packet.tdcsCurrent};${packet.tdcsOnTime};")
+            append("${packet.batteryRSOC};${packet.reserved8};${packet.reserved64}")
+            appendLine()
+        }
+    }
+
+    private fun buildAerieCsvLine(index: Int, captureTimeString: String, packet: AeriePacket): String {
+        return buildString {
+            append("$index;$captureTimeString;")
+            append("${packet.near740};${packet.near850};${packet.near940};")
+            append("${packet.mid740};${packet.mid850};${packet.mid940};")
+            append("${packet.far740};${packet.far850};${packet.far940};")
+            append("${packet.ambient};")
+            append("${packet.accelerometerX};${packet.accelerometerY};${packet.accelerometerZ};")
+            append("${packet.elapsedTime};${packet.timer};")
+            append("${if (packet.eventBit == 1) "TRUE" else "FALSE"};")
+            append("${packet.hbO2};${packet.hbd};")
+            append("${packet.sessionId};${packet.pulseRate};")
+            append("${packet.respiratoryRate};${packet.spO2}")
+            appendLine()
+        }
+    }
+
+    private fun writeBufferToFile() {
+        try {
+            historyFile.appendText(csvDataBuilder.toString())
+            Log.d("DataParser", "Wrote buffered CSV data to file: ${historyFile.absolutePath}")
+            csvDataBuilder.clear()
+            csvLineCount = 0
+        } catch (e: IOException) {
+            Log.e("DataParser", "Error writing buffered CSV data to file: ${e.message}")
+        }
+    }
+
+    private fun resetCaptureTimeVariables(device: Device) {
+        device.captureTimeStored = null
+        device.timerBitsStored = 0u
+        initialHistoryCaptureTime = null
+        Log.d("DataParser", "Reset capture time variables")
+    }
+
+    private fun onHistoryInactivityTimeout(device: Device) {
+        Log.d("DataParser", "History inactivity timeout")
+        if (device.isStreamingStoredData) {
+            onTotalDownloadComplete(device)
+        }
     }
 
     /**
@@ -585,6 +737,19 @@ object DataParser {
         Log.d("DataParser", "Total download complete")
         device.isStreamingStoredData = false
         device.historyIndex = 1
+
+        if (csvDataBuilder.isNotEmpty()) {
+            writeBufferToFile()
+        }
+
+        csvDataBuilder.clear()
+        csvLineCount = 0
+
+
+
         device.setDownloadComplete(true)
+
+        resetCaptureTimeVariables(device)
+        readyForNewHistoryFile = true
     }
 }

@@ -26,6 +26,7 @@ class Device(
     initialStatus: BleManager.SetupState
 ) {
 
+    lateinit var historyFile: File
     val macAddressString: String = bluetoothGatt.device.address
     val macAddress: Long = macAddressToLong(macAddressString)
     val name: String = bluetoothGatt.device.name ?: "Unknown Device"
