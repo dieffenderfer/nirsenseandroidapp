@@ -17,6 +17,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ProgressBar
+import android.widget.SeekBar
 import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
@@ -58,6 +59,9 @@ class SingleGraphFragment : Fragment() {
     private lateinit var progressText: TextView
     private lateinit var dismissButton: Button
 
+    private lateinit var animationDelaySlider: SeekBar
+    private lateinit var animationDelayValue: TextView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         arguments?.let {
@@ -81,6 +85,7 @@ class SingleGraphFragment : Fragment() {
                     setupUI()
                     observeDeviceChanges()
                     setupClickListeners()
+                    setupAnimationDelaySlider()
                 }
             } catch (e: IllegalArgumentException) {
                 Log.e("SingleGraphFragment", "Device not found", e)
@@ -136,6 +141,10 @@ class SingleGraphFragment : Fragment() {
             readoutBox3Bottom.text = singleGraphViewModel.readoutConfigs[2].unit
             readoutBox4Top.text = singleGraphViewModel.readoutConfigs[3].label
             readoutBox4Bottom.text = singleGraphViewModel.readoutConfigs[3].unit
+
+            // Initialize animation delay slider and value
+            this@SingleGraphFragment.animationDelaySlider = binding.animationDelaySlider
+            this@SingleGraphFragment.animationDelayValue = binding.animationDelayValue
         }
 
         singleGraphViewModel.setupLineCharts(lineChart, lineChart2)
@@ -208,8 +217,6 @@ class SingleGraphFragment : Fragment() {
             btnExport.setOnClickListener {
                 checkStreamingAndExecute {
                     showConfirmationDialog("Export Flash", "Are you ready to export the flash data from the device to the app?") {
-
-
                         currentDevice.storedIndex = 0
                         val currentDateString = java.text.SimpleDateFormat("yyyy-MM-dd_HH-mm-ss", java.util.Locale.US).format(java.util.Date())
                         val newfilename = sanitizeFilename("${currentDevice.name}_${currentDateString}_stored")
@@ -234,6 +241,24 @@ class SingleGraphFragment : Fragment() {
         }
     }
 
+    private fun setupAnimationDelaySlider() {
+        animationDelaySlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                val delay = progress + 1 // Ensure minimum delay of 1ms
+                animationDelayValue.text = "$delay ms"
+                singleGraphViewModel.setAnimationDelay(delay.toLong())
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        // Set initial value
+        val initialDelay = animationDelaySlider.progress + 1
+        animationDelayValue.text = "$initialDelay ms"
+        singleGraphViewModel.setAnimationDelay(initialDelay.toLong())
+    }
+
     private fun showRemoveDeviceConfirmationDialog() {
         AlertDialog.Builder(requireContext())
             .setTitle("Remove Device")
@@ -245,7 +270,6 @@ class SingleGraphFragment : Fragment() {
             .show()
     }
 
-    //If Embedded, adjust how fragment displays
     private fun adjustUIElementsForEmbed() {
         binding.apply {
             //Hide most buttons
@@ -257,7 +281,6 @@ class SingleGraphFragment : Fragment() {
                 btnExport.visibility = View.GONE
                 btnClear.visibility = View.GONE
             }
-
 
             //Hide app version text at the bottom
             binding.versionTextView.visibility = View.GONE
@@ -334,7 +357,6 @@ class SingleGraphFragment : Fragment() {
                     else 0
 
                     progressBar.progress = progressPercent
-                    //Log.d("DBG", "progressPercent = $progressPercent")
 
                     if (currentDevice.currentPacketv2.value >= currentDevice.totalPackets.value) {
                         progressText.text = "Transfer is complete!\n\n${currentDevice.currentPacketv2.value} / ${currentDevice.totalPackets.value} ✅\n\nThe data is located at Documents/NIRSense/${currentDevice.historyFilename}.csv"

@@ -311,14 +311,36 @@ object BleManager : Application() {
                             PREVIEW -> {
                                 val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
                                 device?.let {
-                                    DataParser.processPreviewData(value, it)
+                                    var chunkSize = when (device.deviceVersionInfo.deviceFamily) {
+                                        Device.DeviceFamily.Aurelian -> 120
+                                        Device.DeviceFamily.Aerie -> 40
+                                        else -> 80
+                                    }
+                                    var offset = 0
+                                    while (offset < value.size) {
+                                        val end = minOf(offset + chunkSize, value.size)
+                                        var chunk = value.copyOfRange(offset, end)
+                                        if (chunk.size < chunkSize) {
+                                            val paddedChunk = ByteArray(chunkSize)
+                                            System.arraycopy(chunk, 0, paddedChunk, 0, chunk.size)
+                                            chunk = paddedChunk
+                                            Log.d("DBG", "Padded chunk with 0x00 bytes to meet chunkSize requirement")
+                                        }
+                                        DataParser.processPreviewData(chunk, it)
+                                        offset += chunkSize
+                                    }
                                 }
                             }
+
                             STORAGE -> {
                                 Log.d("DBG", "Received data from STORAGE characteristic")
                                 val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
                                 device?.let {
-                                    var chunkSize = if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian) 120 else if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aerie) 40 else 80 //TODO FIX_ME Refactor this to handle different device types better. Could be something like Device.chunksize that gets set on onboarding
+                                    var chunkSize = when (device.deviceVersionInfo.deviceFamily) {
+                                        Device.DeviceFamily.Aurelian -> 120
+                                        Device.DeviceFamily.Aerie -> 40
+                                        else -> 80
+                                    }
                                     var offset = 0
                                     while (offset < value.size) {
                                         val end = minOf(offset + chunkSize, value.size)

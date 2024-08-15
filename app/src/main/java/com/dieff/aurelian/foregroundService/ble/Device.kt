@@ -170,7 +170,7 @@ class Device(
     inner class DeviceDataAggregator {
         private fun determineArraySizeGraphing(): Int {
             return when (deviceVersionInfo.deviceFamily) {
-                DeviceFamily.Aurelian -> 5
+                DeviceFamily.Aurelian -> 20
                 DeviceFamily.Argus -> {
                     if (deviceVersionInfo.argusVersion >= 2) 6 else 1
                 }
