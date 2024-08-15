@@ -385,7 +385,7 @@ class SingleGraphFragment : Fragment() {
 
             var transferText = ""
             if (device.currentPacketv2.value > 0) {
-                transferText = "${device.currentPacketv2.value} packets downloaded. ✅"
+                transferText = "\n\n${device.currentPacketv2.value} packets downloaded. ✅"
             }
 
             progressText.text = "Transfer is complete!$transferText\n\nThe data is located at Documents/NIRSense/${device.historyFilename}.csv"
