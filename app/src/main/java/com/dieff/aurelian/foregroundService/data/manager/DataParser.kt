@@ -375,7 +375,8 @@ object DataParser {
         when (device.deviceVersionInfo.deviceFamily) {
             Device.DeviceFamily.Argus -> processArgusStoredData(data, device)
             Device.DeviceFamily.Aurelian -> processAurelianStoredData(data, device)
-            else -> Log.w("DataParser", "Unsupported device family for stored data")
+            Device.DeviceFamily.Aerie -> processAerieStoredData(data, device)
+            else -> Log.w("DataParser", "Unsupported device family for stored data: ")
         }
 
         historyInactivityTimer = Timer("HistoryInactivityTimer", false)
@@ -405,6 +406,7 @@ object DataParser {
             val header = when (device.deviceVersionInfo.deviceFamily) {
                 Device.DeviceFamily.Aurelian -> getAurelianHeader(device.metadataText)
                 Device.DeviceFamily.Argus -> getArgusHeader(device.metadataText)
+                Device.DeviceFamily.Aerie -> getAerieHeader(device.metadataText)
                 else -> throw IllegalArgumentException("Unsupported device family: ${device.deviceVersionInfo.deviceFamily}")
             }
 
@@ -434,6 +436,10 @@ object DataParser {
         return "Index;Capture Time;EEG_C1;EEG_C2;EEG_C3;EEG_C4;EEG_C5;EEG_C6;AccelX;AccelY;AccelZ;" +
                 "Time_Elapsed;Counter;Marker;Session;Pulse_Rate;tDCS_Impedance;tDCS_Current;tDCS_On_Time;" +
                 "Battery_RSOC;Reserved8;Reserved64;$metadata\n"
+    }
+
+    private fun getAerieHeader(metadata: String): String {
+        return "Index;CaptureTime;Near770ADC;Near850ADC;Near940ADC;Mid770ADC;Mid850ADC;Mid940ADC;Far770ADC;Far850ADC;Far940ADC;AmbientADC;AccelerometerX;AccelerometerY;AccelerometerZ;ElapsedTime;TimerBits;EventBit;HbO2;Hbd;SessionId;PulseRate;RespiratoryRate;SpO2;$metadata\n"
     }
 
     /**

@@ -300,161 +300,161 @@ object BleManager : Application() {
             value: ByteArray
         ) {
             //scope.launch {
-                Log.d("DBG", "Received Bluetooth packet of size ${value.size}")
-                Log.d("DBG", "Entered onCharacteristicChanged in response to notification request")
-                if (characteristic != null) {
-                    with(characteristic) {
-                        ++packetCount
-                        val newMessageString = value.joinToString(separator = " ") { String.format("%02X", it) }
-                        Log.i("DBG", "Characteristic $uuid changed | packet: $packetCount value: $newMessageString")
-                        when (uuid) {
-                            PREVIEW -> {
-                                val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
-                                device?.let {
-                                    var chunkSize = when (device.deviceVersionInfo.deviceFamily) {
-                                        Device.DeviceFamily.Aurelian -> 120
-                                        Device.DeviceFamily.Aerie -> 40
-                                        else -> 80
-                                    }
-                                    var offset = 0
-                                    while (offset < value.size) {
-                                        val end = minOf(offset + chunkSize, value.size)
-                                        var chunk = value.copyOfRange(offset, end)
-                                        if (chunk.size < chunkSize) {
-                                            val paddedChunk = ByteArray(chunkSize)
-                                            System.arraycopy(chunk, 0, paddedChunk, 0, chunk.size)
-                                            chunk = paddedChunk
-                                            Log.d("DBG", "Padded chunk with 0x00 bytes to meet chunkSize requirement")
-                                        }
-                                        DataParser.processPreviewData(chunk, it)
-                                        offset += chunkSize
-                                    }
+            Log.d("DBG", "Received Bluetooth packet of size ${value.size}")
+            Log.d("DBG", "Entered onCharacteristicChanged in response to notification request")
+            if (characteristic != null) {
+                with(characteristic) {
+                    ++packetCount
+                    val newMessageString = value.joinToString(separator = " ") { String.format("%02X", it) }
+                    Log.i("DBG", "Characteristic $uuid changed | packet: $packetCount value: $newMessageString")
+                    when (uuid) {
+                        PREVIEW -> {
+                            val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
+                            device?.let {
+                                var chunkSize = when (device.deviceVersionInfo.deviceFamily) {
+                                    Device.DeviceFamily.Aurelian -> 120
+                                    Device.DeviceFamily.Aerie -> 40
+                                    else -> 80
                                 }
-                            }
-
-                            STORAGE -> {
-                                Log.d("DBG", "Received data from STORAGE characteristic")
-                                val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
-                                device?.let {
-                                    var chunkSize = when (device.deviceVersionInfo.deviceFamily) {
-                                        Device.DeviceFamily.Aurelian -> 120
-                                        Device.DeviceFamily.Aerie -> 40
-                                        else -> 80
+                                var offset = 0
+                                while (offset < value.size) {
+                                    val end = minOf(offset + chunkSize, value.size)
+                                    var chunk = value.copyOfRange(offset, end)
+                                    if (chunk.size < chunkSize) {
+                                        val paddedChunk = ByteArray(chunkSize)
+                                        System.arraycopy(chunk, 0, paddedChunk, 0, chunk.size)
+                                        chunk = paddedChunk
+                                        Log.d("DBG", "Padded chunk with 0x00 bytes to meet chunkSize requirement")
                                     }
-                                    var offset = 0
-                                    while (offset < value.size) {
-                                        val end = minOf(offset + chunkSize, value.size)
-                                        var chunk = value.copyOfRange(offset, end)
-                                        if (chunk.size < chunkSize) {
-                                            val paddedChunk = ByteArray(chunkSize)
-                                            System.arraycopy(chunk, 0, paddedChunk, 0, chunk.size)
-                                            chunk = paddedChunk
-                                            Log.d("DBG", "Padded chunk with 0x00 bytes to meet chunkSize requirement")
-                                        }
-                                        DataParser.processStoredData(chunk, it)
-                                        offset += chunkSize
-                                    }
+                                    DataParser.processPreviewData(chunk, it)
+                                    offset += chunkSize
                                 }
-                            }
-                            STATUS -> {
-                                Log.d("DBG", "Received data from STATUS characteristic")
-                                val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
-                                device?.let {
-                                    val statusBytes = value
-                                    if (statusBytes.size >= 5) {
-                                        when (statusBytes[0]) {
-                                            0x05.toByte() -> {
-                                                val nvmVersion: Int = (statusBytes[4].toInt() and 0xFF shl 24) or
-                                                        (statusBytes[3].toInt() and 0xFF shl 16) or
-                                                        (statusBytes[2].toInt() and 0xFF shl 8) or
-                                                        (statusBytes[1].toInt() and 0xFF)
-                                                device.deviceVersionInfo.nvmVersion = nvmVersion
-                                                Log.d("DBG", "STATUS nvm version received, device.deviceVersionInfo.nvmVersion = ${device.deviceVersionInfo.nvmVersion}")
-                                                updateDeviceSetupState(device, SetupState.NVM_RECEIVED)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            BATTERY -> {
-                                Log.d("DBG", "Received data from BATTERY characteristic")
-                                val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
-                                device?.let {
-                                    if (value.isNotEmpty()) {
-                                        val batteryLevel = value[0].toInt()
-                                        device.battery = batteryLevel
-                                        Log.d("DBG", "Battery level received: $batteryLevel%")
-                                        updateDeviceSetupState(device, SetupState.BATTERY_RECEIVED)
-                                    } else {
-                                        Log.e("DBG", "Received empty battery data")
-                                    }
-                                }
-                            }
-                            FIRMWARE -> {
-                                Log.d("DBG", "Received data from FIRMWARE characteristic")
-                                Log.i("DBG", "FIRMWARE value: $newMessageString")
-                                val bytes = value
-                                if (bytes.size >= 2) {
-                                    val deviceFamilyNum = bytes[0].toInt()
-                                    var deviceFamily = Device.DeviceFamily.fromInt(deviceFamilyNum)
-                                    var firmwareVersion = ""
-                                    var argusVersion: Int = 0
-
-                                    val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
-                                    device?.let {
-                                        // Check device name for Aerie
-                                        if (!it.name.contains("Aurelian", ignoreCase = true) &&
-                                            !it.name.contains("Argus", ignoreCase = true)) {
-                                            deviceFamily = Device.DeviceFamily.Aerie
-                                            Log.i("DBG", "Device name does not contain Aurelian or Argus, setting as Aerie")
-                                        }
-
-                                        // Parse firmware version based on device family
-                                        firmwareVersion = when (deviceFamily) {
-                                            Device.DeviceFamily.Aerie -> {
-                                                if (bytes.size >= 3) {
-                                                    "${bytes[1].toInt()}.${bytes[2].toInt()}"
-                                                } else {
-                                                    Log.e("DBG", "Unexpected firmware data size for Aerie: ${bytes.size}")
-                                                    "Unknown"
-                                                }
-                                            }
-                                            else -> "${bytes[1].toInt() and 0xff}.${bytes[2].toInt() and 0xff}"
-                                        }
-
-                                        if (deviceFamily == Device.DeviceFamily.Argus) {
-                                            argusVersion = if (bytes[1].toInt() >= 5) 2 else 1
-                                            if (firmwareVersion.toDouble() >= 170.0) {
-                                                argusVersion = 2
-                                            }
-                                        }
-
-                                        Log.i("DBG", "FIRMWARE info: deviceFamily $deviceFamily and firmwareVersion $firmwareVersion and argusVersion $argusVersion")
-                                        Log.i("DBG", "FIRMWARE assigning info to device, currently it is ${it.deviceVersionInfo}")
-                                        val info = Device.DeviceVersionInfo(
-                                            firmwareVersion,
-                                            it.deviceVersionInfo.nvmVersion,
-                                            deviceFamily,
-                                            argusVersion
-                                        )
-                                        it.deviceVersionInfo = info
-                                        Log.i("DBG", "FIRMWARE assigned info to device, now it is ${it.deviceVersionInfo}")
-                                        updateDeviceSetupState(it, SetupState.FIRMWARE_RECEIVED)
-                                    } ?: run {
-                                        Log.i("DBG", "FIRMWARE failed to assign info to device")
-                                    }
-                                } else {
-                                    Log.e("DBG", "Unexpected firmware data size: ${bytes.size}")
-                                }
-                            }
-                            else -> {
-                                Log.d("DBG", "Received data from unknown characteristic: $uuid")
                             }
                         }
+
+                        STORAGE -> {
+                            Log.d("DBG", "Received data from STORAGE characteristic")
+                            val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
+                            device?.let {
+                                var chunkSize = when (device.deviceVersionInfo.deviceFamily) {
+                                    Device.DeviceFamily.Aurelian -> 120
+                                    Device.DeviceFamily.Aerie -> 40
+                                    else -> 80
+                                }
+                                var offset = 0
+                                while (offset < value.size) {
+                                    val end = minOf(offset + chunkSize, value.size)
+                                    var chunk = value.copyOfRange(offset, end)
+                                    if (chunk.size < chunkSize) {
+                                        val paddedChunk = ByteArray(chunkSize)
+                                        System.arraycopy(chunk, 0, paddedChunk, 0, chunk.size)
+                                        chunk = paddedChunk
+                                        Log.d("DBG", "Padded chunk with 0x00 bytes to meet chunkSize requirement")
+                                    }
+                                    DataParser.processStoredData(chunk, it)
+                                    offset += chunkSize
+                                }
+                            }
+                        }
+                        STATUS -> {
+                            Log.d("DBG", "Received data from STATUS characteristic")
+                            val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
+                            device?.let {
+                                val statusBytes = value
+                                if (statusBytes.size >= 5) {
+                                    when (statusBytes[0]) {
+                                        0x05.toByte() -> {
+                                            val nvmVersion: Int = (statusBytes[4].toInt() and 0xFF shl 24) or
+                                                    (statusBytes[3].toInt() and 0xFF shl 16) or
+                                                    (statusBytes[2].toInt() and 0xFF shl 8) or
+                                                    (statusBytes[1].toInt() and 0xFF)
+                                            device.deviceVersionInfo.nvmVersion = nvmVersion
+                                            Log.d("DBG", "STATUS nvm version received, device.deviceVersionInfo.nvmVersion = ${device.deviceVersionInfo.nvmVersion}")
+                                            updateDeviceSetupState(device, SetupState.NVM_RECEIVED)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        BATTERY -> {
+                            Log.d("DBG", "Received data from BATTERY characteristic")
+                            val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
+                            device?.let {
+                                if (value.isNotEmpty()) {
+                                    val batteryLevel = value[0].toInt()
+                                    device.battery = batteryLevel
+                                    Log.d("DBG", "Battery level received: $batteryLevel%")
+                                    updateDeviceSetupState(device, SetupState.BATTERY_RECEIVED)
+                                } else {
+                                    Log.e("DBG", "Received empty battery data")
+                                }
+                            }
+                        }
+                        FIRMWARE -> {
+                            Log.d("DBG", "Received data from FIRMWARE characteristic")
+                            Log.i("DBG", "FIRMWARE value: $newMessageString")
+                            val bytes = value
+                            if (bytes.size >= 2) {
+                                val deviceFamilyNum = bytes[0].toInt()
+                                var deviceFamily = Device.DeviceFamily.fromInt(deviceFamilyNum)
+                                var firmwareVersion = ""
+                                var argusVersion: Int = 0
+
+                                val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
+                                device?.let {
+                                    // Check device name for Aerie
+                                    if (!it.name.contains("Aurelian", ignoreCase = true) &&
+                                        !it.name.contains("Argus", ignoreCase = true)) {
+                                        deviceFamily = Device.DeviceFamily.Aerie
+                                        Log.i("DBG", "Device name does not contain Aurelian or Argus, setting as Aerie")
+                                    }
+
+                                    // Parse firmware version based on device family
+                                    firmwareVersion = when (deviceFamily) {
+                                        Device.DeviceFamily.Aerie -> {
+                                            if (bytes.size >= 3) {
+                                                "${bytes[1].toInt()}.${bytes[2].toInt()}"
+                                            } else {
+                                                Log.e("DBG", "Unexpected firmware data size for Aerie: ${bytes.size}")
+                                                "Unknown"
+                                            }
+                                        }
+                                        else -> "${bytes[1].toInt() and 0xff}.${bytes[2].toInt() and 0xff}"
+                                    }
+
+                                    if (deviceFamily == Device.DeviceFamily.Argus) {
+                                        argusVersion = if (bytes[1].toInt() >= 5) 2 else 1
+                                        if (firmwareVersion.toDouble() >= 170.0) {
+                                            argusVersion = 2
+                                        }
+                                    }
+
+                                    Log.i("DBG", "FIRMWARE info: deviceFamily $deviceFamily and firmwareVersion $firmwareVersion and argusVersion $argusVersion")
+                                    Log.i("DBG", "FIRMWARE assigning info to device, currently it is ${it.deviceVersionInfo}")
+                                    val info = Device.DeviceVersionInfo(
+                                        firmwareVersion,
+                                        it.deviceVersionInfo.nvmVersion,
+                                        deviceFamily,
+                                        argusVersion
+                                    )
+                                    it.deviceVersionInfo = info
+                                    Log.i("DBG", "FIRMWARE assigned info to device, now it is ${it.deviceVersionInfo}")
+                                    updateDeviceSetupState(it, SetupState.FIRMWARE_RECEIVED)
+                                } ?: run {
+                                    Log.i("DBG", "FIRMWARE failed to assign info to device")
+                                }
+                            } else {
+                                Log.e("DBG", "Unexpected firmware data size: ${bytes.size}")
+                            }
+                        }
+                        else -> {
+                            Log.d("DBG", "Received data from unknown characteristic: $uuid")
+                        }
                     }
-                } else {
-                    Log.e("DBG", "onCharacteristicChanged returned null characteristic")
                 }
+            } else {
+                Log.e("DBG", "onCharacteristicChanged returned null characteristic")
+            }
             //}
         }
 
@@ -702,6 +702,7 @@ object BleManager : Application() {
             Log.d("DBG", "Device connected and added/updated in both lists. Connected devices: ${_connectedDevices.value.size}, All devices: ${_allDevices.value.size}")
 
             withContext(Dispatchers.Main) {
+                delay(1000)
                 device.bluetoothGatt.requestConnectionPriority(BluetoothGatt.CONNECTION_PRIORITY_HIGH)
             }
 

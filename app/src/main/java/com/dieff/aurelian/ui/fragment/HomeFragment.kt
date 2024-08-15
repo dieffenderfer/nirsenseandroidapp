@@ -387,8 +387,8 @@ class HomeFragment : Fragment(), DeviceChangeListener {
 
 
 
-                         val action = HomeFragmentDirections.actionHomeFragmentToMultiGraphFragment()
-                         findNavController().navigate(action)
+                        val action = HomeFragmentDirections.actionHomeFragmentToMultiGraphFragment()
+                        findNavController().navigate(action)
 
                         // New navigation to OnboardingFragment //TODO
 //                        val action = HomeFragmentDirections.actionHomeFragmentToOnboardingFragment()
