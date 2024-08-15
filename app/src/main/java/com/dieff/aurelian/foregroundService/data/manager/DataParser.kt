@@ -352,7 +352,7 @@ object DataParser {
      * Processes stored historical data from a device.
      */
     @Synchronized
-    suspend fun processStoredData(data: ByteArray, device: Device) {
+    fun processStoredData(data: ByteArray, device: Device) {
         Log.d("DataParser", "Processing stored data")
 
         when (device.deviceVersionInfo.deviceFamily) {

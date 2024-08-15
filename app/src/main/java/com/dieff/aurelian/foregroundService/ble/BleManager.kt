@@ -299,7 +299,7 @@ object BleManager : Application() {
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray
         ) {
-            scope.launch {
+            //scope.launch {
                 Log.d("DBG", "Received Bluetooth packet of size ${value.size}")
                 Log.d("DBG", "Entered onCharacteristicChanged in response to notification request")
                 if (characteristic != null) {
@@ -433,7 +433,7 @@ object BleManager : Application() {
                 } else {
                     Log.e("DBG", "onCharacteristicChanged returned null characteristic")
                 }
-            }
+            //}
         }
 
         /**
