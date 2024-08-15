@@ -39,6 +39,8 @@ class SingleGraphViewModel : ViewModel() {
     private var everIncreasingUpperBound = 0f
     private var everIncreasingX = 0f
 
+    var newAnimationDelay = 2L
+
     // Properties for smooth animation
     private var smoothAnimation = true
     private val _animationDelay = MutableLiveData<Long>(16L)
@@ -80,6 +82,7 @@ class SingleGraphViewModel : ViewModel() {
     private fun setupArgus() {
         smoothAnimation = true
         setAnimationDelay(16L)
+        newAnimationDelay = 16L
         readoutConfigs = listOf(
             ReadoutConfig("StO2", "%"),
             ReadoutConfig("SpO2", "%"),
@@ -91,6 +94,7 @@ class SingleGraphViewModel : ViewModel() {
     private fun setupAurelian() {
         smoothAnimation = false
         setAnimationDelay(18L)
+        newAnimationDelay = 2L
         readoutConfigs = listOf(
             ReadoutConfig("Sampling Rate", "Hz"),
             ReadoutConfig("tDCS Imp", "Ω"),
@@ -102,6 +106,7 @@ class SingleGraphViewModel : ViewModel() {
     private fun setupAerie() {
         smoothAnimation = true
         setAnimationDelay(16L)
+        newAnimationDelay = 2L
         readoutConfigs = listOf(
             ReadoutConfig("SpO2", "%"),
             ReadoutConfig("PR", "bpm"),
@@ -113,6 +118,7 @@ class SingleGraphViewModel : ViewModel() {
     private fun setupDefault() {
         smoothAnimation = true
         setAnimationDelay(16L)
+        newAnimationDelay = 16L
         readoutConfigs = listOf(
             ReadoutConfig("Value 1", ""),
             ReadoutConfig("Value 2", ""),
@@ -433,7 +439,7 @@ class SingleGraphViewModel : ViewModel() {
                         lineChart2.notifyDataSetChanged()
                     }
 
-                    if (smoothAnimation) {
+                   // if (2 == 2) {
                         // If smooth animation is enabled, update the charts after each point
                         if (lineChart.visibility != GONE) {
                             lineChart.invalidate()
@@ -442,19 +448,19 @@ class SingleGraphViewModel : ViewModel() {
                             lineChart2.invalidate()
                         }
 
-                        animationDelay.value?.let { delay(it) }
+                        delay(newAnimationDelay)
                     }
-                }
+              //  }
 
-                if (!smoothAnimation) {
-                    // If smooth animation is disabled, update the charts once after processing all points
-                    if (lineChart.visibility != GONE) {
-                        lineChart.invalidate()
-                    }
-                    if (lineChart2.visibility != GONE) {
-                        lineChart2.invalidate()
-                    }
-                }
+//                if (!smoothAnimation) {
+//                    // If smooth animation is disabled, update the charts once after processing all points
+//                    if (lineChart.visibility != GONE) {
+//                        lineChart.invalidate()
+//                    }
+//                    if (lineChart2.visibility != GONE) {
+//                        lineChart2.invalidate()
+//                    }
+//                }
             }
         }
 
