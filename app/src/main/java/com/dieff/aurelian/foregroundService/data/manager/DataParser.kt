@@ -540,31 +540,38 @@ object DataParser {
             is ArgusPacket -> packet.sequenceCounter.toUInt()
             is AurelianPacket -> packet.counter.toUInt()
             is AeriePacket -> packet.counter.toUInt()
-            else -> return initialHistoryCaptureTime ?: Instant.now()
+            else -> return initialHistoryCaptureTime ?: Instant.now() // Fallback if packet type is unknown
         }
 
-        val previousTimerBits = device.timerBitsStored
+        val previousTimerBits = device.timerBitsStored ?: currentTimerBits
 
-        val timeMultiplier = if (currentTimerBits < previousTimerBits) {
-            ((MAX_TIMER_BITS + 1U) - previousTimerBits) + currentTimerBits
-        } else {
-            currentTimerBits - previousTimerBits
-        }
+//        var timeMultiplier = if (currentTimerBits < previousTimerBits) {
+//            ((MAX_TIMER_BITS + 1U) - previousTimerBits) + currentTimerBits
+//        } else {
+//            currentTimerBits - previousTimerBits
+//        }
 
-        val captureTime = if (timeMultiplier == 1U) {
+        // This is a temporary measure, but
+        // We aren't really anticipating dropped packets for stored data transfer //TODO FIX_ME
+        var timeMultiplier = 1U
+
+        val captureTime = if (timeMultiplier == 1U) { // If no dropped packets
             val elapsedTime = when (packet) {
                 is ArgusPacket -> packet.timer.toDouble() / if (packet.argusVersion == 2) ARGUS_2_TIME_DIVISOR else ARGUS_1_TIME_DIVISOR
-                is AurelianPacket -> packet.timeElapsed / 32768.0
-                is AeriePacket -> packet.elapsedTime.toDouble() / 32768.0
+                is AurelianPacket -> (packet.timeElapsed / AURELIAN_TIME_DIVISOR)
+                is AeriePacket -> (packet.elapsedTime.toDouble() / AERIE_TIME_DIVISOR)
                 else -> 0.0
             }
-            val nanos = (elapsedTime * 1_000_000_000).toLong()
-            device.captureTimeStored?.plusNanos(nanos) ?: initialHistoryCaptureTime ?: Instant.now()
+            val realms = (elapsedTime).toDouble()
+            val realmsdiv4 = (realms)
+            val realmsdivnano = (realmsdiv4  * 1000000000).toLong()
+            device.captureTimeStored?.plusNanos(realmsdivnano) ?: initialHistoryCaptureTime ?: Instant.now() //Instant.now in case of emergency, in case we never received an initial timestamp and need something to work with
         } else {
             Log.w("DataParser", "Unexpected time multiplier for stored data: $timeMultiplier")
             device.captureTimeStored ?: initialHistoryCaptureTime ?: Instant.now()
         }
 
+        // Update device with new capture time and timer bits
         device.captureTimeStored = captureTime
         device.timerBitsStored = currentTimerBits
 
