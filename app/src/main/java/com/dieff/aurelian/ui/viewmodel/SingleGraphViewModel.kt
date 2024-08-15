@@ -324,12 +324,12 @@ class SingleGraphViewModel : ViewModel() {
                     for (i in 0 until datasetCount) {
                         val (pingDataset, pongDataset) = pingPongDatasets[i]
 
-                        Log.d("DBG_PP", "****** pingNotPong[$i] = ${pingNotPongArray[i]} ******")
+                        //Log.d("DBG_PP", "****** pingNotPong[$i] = ${pingNotPongArray[i]} ******")
 
                         // Test for First Pass
                         if (pingDataset.entryCount + pongDataset.entryCount < xMax + 1) {
-                            Log.d("DBG_PP", "FIRST_PASS: pingDataset is beforeDataSet")
-                            Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                            //Log.d("DBG_PP", "FIRST_PASS: pingDataset is beforeDataSet")
+                            //Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
                             // Add new data as an Entry to the end of the beforeDataset
                             val newEntry = when (graphPacket) {
                                 is ArgusPacket -> Entry(pingDataset.entryCount.toFloat(), graphPacket.ppgWaveform.toFloat())
@@ -346,18 +346,18 @@ class SingleGraphViewModel : ViewModel() {
                                 else -> null
                             }
                             newEntry?.let {
-                                Log.d("DBG_PP", "  ADD ENTRY TO pingDataSet $it")
+                                //Log.d("DBG_PP", "  ADD ENTRY TO pingDataSet $it")
                                 pingDataset.addEntry(it)
                             }
-                            Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                            //Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
                             if (pingDataset.entryCount == xMax + 1) {
                                 pingNotPongArray[i] = false // switch to pongDataset being before buffer
-                                Log.d("DBG_PP", "  Toggled pingNotPong[$i] to: ${pingNotPongArray[i]}")
+                                //Log.d("DBG_PP", "  Toggled pingNotPong[$i] to: ${pingNotPongArray[i]}")
                             }
                         } else {
                             if (pingNotPongArray[i]) {  // pingDataset is before buffer
-                                Log.d("DBG_PP", "ODD_PASS: pingDataset is beforeDataSet")
-                                Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                                //Log.d("DBG_PP", "ODD_PASS: pingDataset is beforeDataSet")
+                                //Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
                                 // Add new data as an Entry to the end of the beforeDataset
                                 val newEntry = when (graphPacket) {
                                     is ArgusPacket -> Entry(pingDataset.entryCount.toFloat(), graphPacket.ppgWaveform.toFloat())
@@ -374,21 +374,21 @@ class SingleGraphViewModel : ViewModel() {
                                     else -> null
                                 }
                                 newEntry?.let {
-                                    Log.d("DBG_PP", "  ADD ENTRY TO pingDataSet $it")
+                                    //Log.d("DBG_PP", "  ADD ENTRY TO pingDataSet $it")
                                     pingDataset.addEntry(it)
                                 }
-                                Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                                //Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
                                 if (pongDataset.entryCount > 0) {
-                                    Log.d("DBG_PP", "  REMOVE ENTRY FROM pongDataSet: entryCount =  ${pongDataset.entryCount}")
+                                    //Log.d("DBG_PP", "  REMOVE ENTRY FROM pongDataSet: entryCount =  ${pongDataset.entryCount}")
                                     pongDataset.removeFirst()
                                     if (pongDataset.entryCount == 0) {
                                         pingNotPongArray[i] = false  // switch to pongDataset being before buffer
-                                        Log.d("DBG_PP", "  Toggled pingNotPong[$i] to: ${pingNotPongArray[i]}")
+                                        //Log.d("DBG_PP", "  Toggled pingNotPong[$i] to: ${pingNotPongArray[i]}")
                                     }
                                 }
                             } else { // pongDataset is before buffer
-                                Log.d("DBG_PP", "EVN_PASS: pongDataset is beforeDataSet")
-                                Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                                //Log.d("DBG_PP", "EVN_PASS: pongDataset is beforeDataSet")
+                                //Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
                                 val newEntry = when (graphPacket) {
                                     is ArgusPacket -> Entry(pongDataset.entryCount.toFloat(), graphPacket.ppgWaveform.toFloat())
                                     is AurelianPacket -> Entry(pongDataset.entryCount.toFloat(), when(i) {
@@ -404,24 +404,24 @@ class SingleGraphViewModel : ViewModel() {
                                     else -> null
                                 }
                                 newEntry?.let {
-                                    Log.d("DBG_PP", "  ADD ENTRY TO pongDataSet $it")
+                                    //Log.d("DBG_PP", "  ADD ENTRY TO pongDataSet $it")
                                     pongDataset.addEntry(it)
                                 }
-                                Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                                //Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
                                 if (pingDataset.entryCount > 0) {
-                                    Log.d("DBG_PP", "  REMOVE ENTRY FROM pingDataSet: entryCount =  ${pingDataset.entryCount}")
+                                    //Log.d("DBG_PP", "  REMOVE ENTRY FROM pingDataSet: entryCount =  ${pingDataset.entryCount}")
                                     pingDataset.removeFirst()
-                                    Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
+                                    //Log.d("DBG_PP", "  pingDataset.entryCount = ${pingDataset.entryCount} pongDataset.entryCount = ${pongDataset.entryCount}\"")
                                     if (pingDataset.entryCount == 0) {
                                         pingNotPongArray[i] = true // switch to pingDataset to before buffer
-                                        Log.d("DBG_PP", "  Toggled pingNotPong[$i] to: ${pingNotPongArray[i]}")
+                                        //Log.d("DBG_PP", "  Toggled pingNotPong[$i] to: ${pingNotPongArray[i]}")
                                     }
                                 }
                             }
                         }
                     }
                     // Notify the chart that the data has changed
-                    Log.d("DBG_PP","  NotifyDataChanged Statements")
+                    //Log.d("DBG_PP","  NotifyDataChanged Statements")
                     if (lineChart.visibility != GONE) {
                         lineChart.data.notifyDataChanged()
                         lineChart.notifyDataSetChanged()

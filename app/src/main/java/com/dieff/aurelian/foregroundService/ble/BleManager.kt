@@ -83,9 +83,7 @@ object BleManager : Application() {
 
     private var packetCount = -1
 
-    // Queue for onboarding devices one at a time
-    private val onboardingQueue = ArrayDeque<Device>()
-    private var isOnboarding = false
+
 
     /**
      * Enum class representing different states of device setup process
@@ -124,7 +122,7 @@ object BleManager : Application() {
      */
     @SuppressLint("MissingPermission")
     fun connectBle(scanResult: ScanResult, isDelayed: Boolean, isRetry: Boolean) {
-        Log.d("DBG", "Entered connectBle")
+        Log.d("DBG", "Entered connectBle for device ${scanResult.device.address}")
         if (!isRetry) {
             rcCnt = 0
             currentBleDevice = scanResult
@@ -210,7 +208,7 @@ object BleManager : Application() {
                             if (device.hasCompletedSetupBefore) {
                                 updateDeviceSetupState(device, SetupState.SETUP_COMPLETE)
                             } else {
-                                addToOnboardingQueue(device)
+                                updateDeviceSetupState(device, SetupState.CONNECTED)
                             }
                         }
                         ConnState.DISCONNECTED -> disconnected(prevConnectState, device)
@@ -711,7 +709,7 @@ object BleManager : Application() {
             // Remove device from connectedDevices list
             _connectedDevices.update { it.filter { d -> d.macAddress != device.macAddress } }
 
-            // Update the device's connection status in the allDevices list
+            // Update ONLY the disconnected device's status in the allDevices list
             _allDevices.update { devices ->
                 devices.map {
                     if (it.macAddress == device.macAddress) {
@@ -818,13 +816,16 @@ object BleManager : Application() {
         when (newState) {
             SetupState.DISCONNECTED -> {
                 scope.launch {
-                    Log.d("DBG", "Device ${device.macAddressString} disconnected. Attempting to reconnect...")
-                    delay(100)
-                    val scanResult = ScanResult(
-                        device.bluetoothGatt.device,
-                        0, 0, 0, 0, 0, 0, 0, null, 0
-                    )
-                    connectBle(scanResult, isDelayed = false, isRetry = true)
+                    // Only attempt to reconnect if this device was previously connected
+                    if (device.connectionStatus.value == Device.ConnectionStatus.CONNECTED) {
+                        Log.d("DBG", "Device ${device.macAddressString} disconnected. Attempting to reconnect...")
+                        delay(100)
+                        val scanResult = ScanResult(
+                            device.bluetoothGatt.device,
+                            0, 0, 0, 0, 0, 0, 0, null, 0
+                        )
+                        connectBle(scanResult, isDelayed = false, isRetry = true)
+                    }
                 }
             }
             SetupState.CONNECTING -> {
@@ -878,31 +879,10 @@ object BleManager : Application() {
             SetupState.SETUP_COMPLETE -> {
                 Log.d("DBG", "Device ${device.macAddressString} is fully set up and ready to use")
                 device.hasCompletedSetupBefore = true
-                isOnboarding = false
-                processOnboardingQueue()
             }
         }
     }
 
-    /**
-     * Adds a device to the onboarding queue
-     * @param device The device to add to the queue
-     */
-    private fun addToOnboardingQueue(device: Device) {
-        onboardingQueue.addLast(device)
-        processOnboardingQueue()
-    }
-
-    /**
-     * Processes the onboarding queue, setting up devices one at a time
-     */
-    private fun processOnboardingQueue() {
-        if (isOnboarding || onboardingQueue.isEmpty()) return
-
-        isOnboarding = true
-        val device = onboardingQueue.removeFirst()
-        updateDeviceSetupState(device, SetupState.CONNECTED)
-    }
 
     /**
      * Stops sampling for all connected devices
@@ -1031,8 +1011,8 @@ object BleManager : Application() {
     fun stopSamplingGattInitialSetup(gatt: BluetoothGatt) {
         scope.launch {
             Log.d("DBG", "Entered stopSamplingGattInitialSetup")
-            delay(200)
-            writeCharacteristicWithoutResponse(gatt, COMMAND_UUID, Commands.STOP_SAMPLING)
+            //delay(200)
+            //writeCharacteristicWithoutResponse(gatt, COMMAND_UUID, Commands.STOP_SAMPLING)
             Log.d("DBG", "Exited stopSamplingGattInitialSetup")
 
             val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }
@@ -1052,7 +1032,7 @@ object BleManager : Application() {
      * @throws IllegalArgumentException if no device is found with the given ID
      */
     suspend fun getDeviceById(deviceId: String): Device {
-        val devices = connectedDevices.first() // Collect the first (and only) value from the flow
+        val devices = allDevices.first() // Collect the first (and only) value from the flow
         return devices.find { it.macAddressString == deviceId }
             ?: throw IllegalArgumentException("Device not found")
     }
@@ -1074,7 +1054,7 @@ object BleManager : Application() {
                 uitMessage("Rescan needed")
             }
             if (appConnState == "CONNECTING") {
-                _connectedDevices.value.forEach { completeDisconnect(it) }
+                //_connectedDevices.value.forEach { completeDisconnect(it) }
                 if ((rcCnt < rcCntMax) && (status == HciStatus.ERROR_133) && (newState == ConnState.DISCONNECTED)) {
                     ++rcCnt
                     Log.d("DBG", "    Attempting automatic reconnection $rcCnt")
@@ -1085,7 +1065,7 @@ object BleManager : Application() {
                 }
             }
             if (appConnState == "CONNECTED") {
-                _connectedDevices.value.forEach { completeDisconnect(it) }
+                //_connectedDevices.value.forEach { completeDisconnect(it) }
                 if ((rcCnt < rcCntMax) && newState == ConnState.DISCONNECTED && status == HciStatus.CONNECTION_TIMEOUT) {
                     ++rcCnt
                     Log.d("DBG", "    Attempting automatic reconnection after loss of signal $rcCnt")

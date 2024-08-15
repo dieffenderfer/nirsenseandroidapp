@@ -411,7 +411,7 @@ class Device(
                 csvIndex = previewIndex
             }
             sb.append(csvIndex).append(';')
-            .append(packet.captureTime).append(';')
+                .append(packet.captureTime).append(';')
                 .append(packet.near740).append(';')
                 .append(packet.near850).append(';')
                 .append(packet.near940).append(';')
