@@ -12,6 +12,7 @@ import com.dieff.aurelian.APP_CONN_STATE
 import com.dieff.aurelian.CCC_DESCRIPTOR_UUID
 import com.dieff.aurelian.foregroundService.data.manager.DataParser
 import com.dieff.aurelian.foregroundService.statusChannelServiceToRepository
+import com.dieff.aurelian.ui.fragment.currentFragmentIsHomeFragment
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -1034,8 +1035,10 @@ object BleManager : Application() {
     fun stopSamplingGattInitialSetup(gatt: BluetoothGatt) {
         scope.launch {
             Log.d("DBG", "Entered stopSamplingGattInitialSetup")
-            //delay(200)
-            //writeCharacteristicWithoutResponse(gatt, COMMAND_UUID, Commands.STOP_SAMPLING)
+            delay(200)
+            if (currentFragmentIsHomeFragment) { //TODO FIX_ME just a temporary fix to meet the sprint.
+                writeCharacteristicWithoutResponse(gatt, COMMAND_UUID, Commands.STOP_SAMPLING)
+            }
             Log.d("DBG", "Exited stopSamplingGattInitialSetup")
 
             val device = _connectedDevices.value.find { it.bluetoothGatt == gatt }

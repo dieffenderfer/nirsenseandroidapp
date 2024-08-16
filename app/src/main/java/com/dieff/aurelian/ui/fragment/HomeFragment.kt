@@ -309,12 +309,14 @@ class HomeFragment : Fragment(), DeviceChangeListener {
         Log.d("DBG", "HomeFragment - Entered onResume")
         hasNavigatedToMultiGraph = false
         observeGlobalCurrentDevice()
+        currentFragmentIsHomeFragment = true
     }
 
     override fun onPause() {
         super.onPause()
         Log.d("DBG", "HomeFragment - Entered onPause")
         cleanupObservers()
+        currentFragmentIsHomeFragment = false
     }
 
     override fun onDestroyView() {
@@ -770,3 +772,5 @@ class BlurView(context: Context) : View(context) {
         canvas.restore()
     }
 }
+
+var currentFragmentIsHomeFragment = false //TODO FIX_ME a temporary measure to meet a sprint.
