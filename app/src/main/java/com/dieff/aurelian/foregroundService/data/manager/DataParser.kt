@@ -395,7 +395,7 @@ object DataParser {
             directory.mkdirs()
         }
 
-        historyFile = File(directory, device.historyFilename)
+        historyFile = File(directory, "${device.historyFilename}.csv")
 
         device.captureTimeStored = null
         device.timerBitsStored = 0u

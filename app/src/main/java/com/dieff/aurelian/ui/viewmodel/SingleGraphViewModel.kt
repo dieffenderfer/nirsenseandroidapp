@@ -94,7 +94,7 @@ class SingleGraphViewModel : ViewModel() {
     private fun setupAurelian() {
         smoothAnimation = false
         setAnimationDelay(18L)
-        newAnimationDelay = 0L
+        newAnimationDelay = 1L
         readoutConfigs = listOf(
             ReadoutConfig("Sampling Rate", "Hz"),
             ReadoutConfig("tDCS Imp", "Ω"),
@@ -106,7 +106,7 @@ class SingleGraphViewModel : ViewModel() {
     private fun setupAerie() {
         smoothAnimation = true
         setAnimationDelay(16L)
-        newAnimationDelay = 2L
+        newAnimationDelay = 1L
         readoutConfigs = listOf(
             ReadoutConfig("SpO2", "%"),
             ReadoutConfig("PR", "bpm"),
