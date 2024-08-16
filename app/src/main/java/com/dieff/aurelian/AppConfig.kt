@@ -9,7 +9,7 @@ object AppConfig {
         when (appID) {
             AppID.AURELIAN_APP -> {
                 appName = "Aurelian"
-                appVersion = "1.2 alpha"
+                appVersion = "1.3 alpha"
             }
             AppID.ARGUS_APP -> {
                 appName = "Argus"

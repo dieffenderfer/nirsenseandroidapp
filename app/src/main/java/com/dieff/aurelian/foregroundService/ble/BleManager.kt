@@ -887,11 +887,11 @@ object BleManager : Application() {
                 enablePreviewModeGatt(device.bluetoothGatt)
             }
             SetupState.PREVIEW_MODE_ENABLED -> {
-                if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian || device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aerie) {
-                    enableSaveModeGatt(device.bluetoothGatt)
-                } else {
+               // if (device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aurelian || device.deviceVersionInfo.deviceFamily == Device.DeviceFamily.Aerie) {
+                  //  enableSaveModeGatt(device.bluetoothGatt)
+              //  } else {
                     sendTimestamp(device.bluetoothGatt)
-                }
+                //}
             }
             SetupState.TIMESTAMP_SENT -> {
                 enableSaveModeGatt(device.bluetoothGatt)
